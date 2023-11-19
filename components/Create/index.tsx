@@ -11,11 +11,12 @@ import "../../styles/index.css";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const Create = () => {
 
-    const appDwn = new Web5.Dwn();
-    
-    const [loading, setLoading] = useState<boolean>(false);
+  const [web5, setWeb5] = useState(null);
+  const [myDid, setMyDid] = useState(null);
+  const [loading, setLoading] = useState<boolean>(false);
     const [recipientDid, setRecipientDid] = useState("");
     const [didCopied, setDidCopied] = useState(false);
+    const [campaigns, setCampaigns] = useState([]);
 
     const [cause, setCause] = useState<{ creatorDid: string, title: string, name: string, target: string, deadline: string, description: string, image: File | null }>({
         title: "",
@@ -26,6 +27,24 @@ const Create = () => {
         image: null,
         creatorDid: "",
     });
+
+  useEffect(() => {
+    const initWeb5 = async () => {
+      const { web5, did } = await Web5.connect();
+      setWeb5(web5);
+      console.log(web5)
+      setMyDid(did);
+      console.log(myDid)
+
+      if (web5 && did) {
+        await configureProtocol(web5);
+        await fetchCampaigns(web5, did);
+      }
+    };
+    initWeb5();
+  }, []);
+    
+    
 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -57,6 +76,26 @@ const Create = () => {
           [name]: value,
         }));
       };
+
+
+      const createCause = async (cause) => {
+        const { record } = await web5.dwn.records.write({
+            data: cause,
+            message: {
+                protocol: "https://shegefund.com/fundraise-protocol",
+                protocolPath: "cause",
+                schema: "https://shegefund.com/cause",
+                dataFormat: 'application/json',
+                recipient: recipientDid,
+            },
+        });
+        console.log("Create cause record", record);
+        return record;
+      };
+    
+      const sendRecord = async (record) => {
+        return await record.send(recipientDid);
+      };
       
         
         const handleCreateCause = async (e: FormEvent) => {
@@ -86,7 +125,7 @@ const Create = () => {
         }
 
         // Get the recipient DID from the URL
-        const creatordid = localStorage.getItem('did');
+        // const creatordid = localStorage.getItem('did');
         
         setLoading(true); 
 
@@ -97,21 +136,34 @@ const Create = () => {
           formdata.append('target', cause.target);
           formdata.append('deadline', cause.deadline);
           formdata.append('description', cause.description);
-          formdata.append('creatorDid', creatordid)
+          formdata.append('creatorDid', myDid)
           formdata.append("image", fileInputRef.current.files[0], fileInputRef.current.files[0].name);
       
       
           try {
             // Send the cause object to the dwn
-            const { record } = await appDwn.records.write({
-              data: formdata,
-              message: {
-                protocol: "https://shegefund.com/fundraise-protocol",
-                protocolPath: "cause",
-                schema: "https://shegefund.com/cause",
-                dataFormat: 'application/json',
-                },
+           const record = await createCause(formdata);
+            console.log(record);
+            const { status } = await sendRecord(record);
+
+            console.log("Send record status", status);
+
+            await fetchCampaigns(web5, myDid);
+
+            if (status.code !== 200) {
+              toast.error('Failed to send the cause record.', {
+                position: toast.POSITION.TOP_RIGHT,
+                autoClose: 3000, // Adjust the duration as needed
+              });
+              return;
+            }
+
+            toast.success('Cause created successfully.', {
+              position: toast.POSITION.TOP_RIGHT,
+              autoClose: 3000, // Adjust the duration as needed
             });
+
+            setLoading(false);
 
             // Clear the form
             setCause({
@@ -131,7 +183,7 @@ const Create = () => {
             }
        };
       
-
+  const configureProtocol = async (web5) => {
     const fundraiseProtocolDefinition = {
         protocol: "https://shegefund.com/fundraise-protocol",
         published: true,
@@ -162,7 +214,7 @@ const Create = () => {
     };
     
     const { protocols, status: protocolStatus } =
-      await appDwn.protocols.query({
+      await web5.dwn.protocols.query({
         message: {
           filter: {
             protocol: "https://shegefund.com/fundraise-protocol",
@@ -171,23 +223,41 @@ const Create = () => {
       });
     
     if (protocolStatus.code !== 200 || protocols.length === 0) {
-      const { protocolStatus } = await appDwn.protocols.configure({
+      const { protocolStatus } = await web5.dwn.protocols.configure({
         message: {
           definition: fundraiseProtocolDefinition,
         },
       });
       console.log("Configure protocol status", protocolStatus);
     };
-    
-    const { record } = await appDwn.records.write({
-        data: cause,
-        message: {
-            protocol: "https://shegefund.com/fundraise-protocol",
-            protocolPath: "cause",
-            schema: "https://shegefund.com/cause",
-            recipient: recipientDid,
+  };
+
+
+  const fetchCampaigns = async (web5, did) => {
+    const { records, status: recordStatus } = await web5.dwn.records.query({
+      message: {
+        filter: {
+          protocol: "https://shegefund.com/fundraise-protocol",
+          protocolPath: "cause",
         },
+        dateSort: "createdAscending",
+      },
     });
+    
+    console.log(records);
+    try {
+      const results = await Promise.all(
+        records.map(async (record) => record.data.json())
+      );
+    
+      if (recordStatus.code == 200) {
+        const received = results.filter((result) => result?.recipient === myDid);
+        setCampaigns(received);
+        console.log(received)
+      }
+    } catch (error) {
+      console.error(error);
+    }  };
     
     return (
       <section id="contact" className="overflow-hidden py-16 md:py-20 lg:py-28">
