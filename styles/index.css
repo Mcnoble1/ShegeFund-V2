@@ -30,4 +30,23 @@
   input#checkboxLabel:checked ~ .box span {
     @apply opacity-100;
   }
+
+  .error-outline {
+    border: 1px solid red; 
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    animation: spin 1s linear infinite;
+  }
+  
 }
