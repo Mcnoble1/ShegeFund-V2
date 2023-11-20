@@ -18,14 +18,14 @@ const Create = () => {
     const [didCopied, setDidCopied] = useState(false);
     const [campaigns, setCampaigns] = useState([]);
 
-    const [cause, setCause] = useState<{ creatorDid: string, title: string, name: string, target: string, deadline: string, description: string, image: File | null }>({
+    const [cause, setCause] = useState<{ title: string, name: string, target: string, deadline: string, description: string, image: File | null }>({
         title: "",
         name: "",
         target: "",
         deadline: "",
         description: "",
         image: null,
-        creatorDid: "",
+        // creatorDid: "",
     });
 
   useEffect(() => {
@@ -51,7 +51,14 @@ const Create = () => {
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
 
-          const file = e.target.files?.[0];
+          const file = fileInputRef.current.files[0];
+
+          if (file) {
+            setCause((prevData) => ({
+              ...prevData,
+              image: fileInputRef.current.files[0],
+            }));
+          }
             
           if ( name === 'target') {
             // Use a regular expression to allow only phone numbers starting with a plus
@@ -70,7 +77,6 @@ const Create = () => {
             }
           }
       
-      
         setCause((prevData) => ({
           ...prevData,
           [name]: value,
@@ -78,24 +84,61 @@ const Create = () => {
       };
 
 
-      const createCause = async (cause) => {
-        const { record } = await web5.dwn.records.write({
-            data: cause,
-            message: {
-                protocol: "https://shegefund.com/fundraise-protocol",
-                protocolPath: "cause",
-                schema: "https://shegefund.com/cause",
-                dataFormat: 'application/json',
-                recipient: recipientDid,
-            },
-        });
-        console.log("Create cause record", record);
+        // Create a mixed record
+  async function createCause(title: string, name: string, target: string, description: string, deadline: string, image: File) {
+    let base64Image = null;
+
+    if (image) {
+      const binaryImage = await image.arrayBuffer();
+      base64Image = btoa(
+        new Uint8Array(binaryImage).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+    }
+
+    const messageData = {
+      title,
+      name,
+      target,
+      description,
+      deadline,
+      image: base64Image
+    };
+
+    const { record } = await web5.dwn.records.create({
+      data: messageData,
+      message: {
+          protocol: "https://shegefund.com/fundraise-protocol",
+          protocolPath: "cause",
+          schema: "https://shegefund.com/cause",
+          dataFormat: 'application/json',
+      },
+    });
+    console.log("Create cause record", record);
         return record;
-      };
+  }
+
+
+      // const createCause = async (cause) => {
+      //   const { record } = await web5.dwn.records.write({
+      //       data: cause,
+      //       message: {
+      //           protocol: "https://shegefund.com/fundraise-protocol",
+      //           protocolPath: "cause",
+      //           schema: "https://shegefund.com/cause",
+      //           dataFormat: 'application/json',
+      //           recipient: recipientDid,
+      //       },
+      //   });
+      //   console.log("Create cause record", record);
+      //   return record;
+      // };
     
-      const sendRecord = async (record) => {
-        return await record.send(recipientDid);
-      };
+      // const sendRecord = async (record) => {
+      //   return await record.send(recipientDid);
+      // };
       
         
         const handleCreateCause = async (e: FormEvent) => {
@@ -136,27 +179,27 @@ const Create = () => {
           formdata.append('target', cause.target);
           formdata.append('deadline', cause.deadline);
           formdata.append('description', cause.description);
-          formdata.append('creatorDid', myDid)
+          // formdata.append('creatorDid', myDid)
           formdata.append("image", fileInputRef.current.files[0], fileInputRef.current.files[0].name);
       
       
           try {
             // Send the cause object to the dwn
-           const record = await createCause(formdata);
+           const record = await createCause(cause.title, cause.name, cause.target, cause.description, cause.deadline, cause.image);
             console.log(record);
-            const { status } = await sendRecord(record);
+            // const { status } = await sendRecord(record);
 
-            console.log("Send record status", status);
+            // console.log("Send record status", status);
 
             await fetchCampaigns(web5, myDid);
 
-            if (status.code !== 200) {
-              toast.error('Failed to send the cause record.', {
-                position: toast.POSITION.TOP_RIGHT,
-                autoClose: 3000, // Adjust the duration as needed
-              });
-              return;
-            }
+            // if (status.code !== 200) {
+            //   toast.error('Failed to send the cause record.', {
+            //     position: toast.POSITION.TOP_RIGHT,
+            //     autoClose: 3000, // Adjust the duration as needed
+            //   });
+            //   return;
+            // }
 
             toast.success('Cause created successfully.', {
               position: toast.POSITION.TOP_RIGHT,
@@ -173,13 +216,14 @@ const Create = () => {
                 deadline: "",
                 description: "",
                 image: null,
-                creatorDid: "",
+                // creatorDid: "",
             });
       
             // reload the page 
             }
             catch (error) {
               console.log(error);
+              setLoading(false);
             }
        };
       
@@ -200,7 +244,7 @@ const Create = () => {
         structure: {
             campaign: {
                 $actions: [
-                    {who: "author", can: "write"},
+                    {who: "author", of: "campaign", can: "write"},
                     {who: "anyone", can: "read"},
                 ],
             },
@@ -233,7 +277,7 @@ const Create = () => {
   };
 
 
-  const fetchCampaigns = async (web5, did) => {
+  const fetchCampaigns = async (web5: { dwn: { records: { query: (arg0: { message: { filter: { protocol: string; protocolPath: string; }; dateSort: string; }; }) => PromiseLike<{ records: any; status: any; }> | { records: any; status: any; }; }; }; }, did: any) => {
     const { records, status: recordStatus } = await web5.dwn.records.query({
       message: {
         filter: {
@@ -247,7 +291,7 @@ const Create = () => {
     console.log(records);
     try {
       const results = await Promise.all(
-        records.map(async (record) => record.data.json())
+        records.map(async (record: { data: { json: () => any; }; }) => record.data.json())
       );
     
       if (recordStatus.code == 200) {
@@ -393,8 +437,8 @@ const Create = () => {
                         <div>
                         <input
                           type="file"
+                          accept="image/*"
                             name="image"
-                            value={cause.image}
                             onChange={handleInputChange}
                             ref={fileInputRef}
                             required

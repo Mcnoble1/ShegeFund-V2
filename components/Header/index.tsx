@@ -45,17 +45,17 @@ function shortenDID(did, length) {
   }
 }
 
-useEffect(() => {
-const initWeb5 = async () => {
-  const { web5, did } = await Web5.connect();
-  setWeb5(web5);
-  console.log(web5);
-  localStorage.setItem('did', did);
-  const shortenedDID = shortenDID(did, 15);
-  setMyDid(shortenedDID);
-};
-initWeb5();
-}, []);
+// useEffect(() => {
+// const initWeb5 = async () => {
+//   const { web5, did } = await Web5.connect();
+//   setWeb5(web5);
+//   console.log(web5);
+//   localStorage.setItem('did', did);
+//   const shortenedDID = shortenDID(did, 15);
+//   setMyDid(shortenedDID);
+// };
+// initWeb5();
+// }, []);
   
 
   return (
