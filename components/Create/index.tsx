@@ -52,7 +52,7 @@ const Create = () => {
         const { name, value } = e.target;
 
           const file = fileInputRef.current.files[0];
-
+          console.log(file)
           if (file) {
             setCause((prevData) => ({
               ...prevData,
@@ -88,14 +88,40 @@ const Create = () => {
   async function createCause(title: string, name: string, target: string, description: string, deadline: string, image: File) {
     let base64Image = null;
 
+    // if (image) {
+    //   const binaryImage = await image.arrayBuffer();
+    //   base64Image = btoa(
+    //     new Uint8Array(binaryImage).reduce(
+    //       (data, byte) => data + String.fromCharCode(byte),
+    //       ""
+    //     )
+    //   );
+    // }
+
     if (image) {
-      const binaryImage = await image.arrayBuffer();
-      base64Image = btoa(
-        new Uint8Array(binaryImage).reduce(
-          (data, byte) => data + String.fromCharCode(byte),
-          ""
-        )
-      );
+      const reader = new FileReader();
+  
+      // Use a promise to handle the asynchronous read operation
+      const readImage = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+  
+        reader.onerror = reject;
+  
+        // Read the image file as a Blob
+        reader.readAsDataURL(new Blob([image]));
+      });
+  
+      try {
+        const dataUrl = await readImage;
+        // Extract the base64-encoded image data from the Data URL
+        base64Image = dataUrl.split(',')[1];
+      } catch (error) {
+        console.error('Error reading image file:', error);
+        // Handle the error accordingly
+        throw error;
+      }
     }
 
     const messageData = {
@@ -104,12 +130,13 @@ const Create = () => {
       target,
       description,
       deadline,
-      image: base64Image
+      // image: base64Image
     };
 
     const { record } = await web5.dwn.records.create({
-      data: messageData,
+      data: "Hello",
       message: {
+          published: "true",
           protocol: "https://shegefund.com/fundraise-protocol",
           protocolPath: "cause",
           schema: "https://shegefund.com/cause",
@@ -185,6 +212,7 @@ const Create = () => {
       
           try {
             // Send the cause object to the dwn
+            console.log(cause.image)
            const record = await createCause(cause.title, cause.name, cause.target, cause.description, cause.deadline, cause.image);
             console.log(record);
             // const { status } = await sendRecord(record);
@@ -209,15 +237,15 @@ const Create = () => {
             setLoading(false);
 
             // Clear the form
-            setCause({
-                title: "",
-                name: "",
-                target: "",
-                deadline: "",
-                description: "",
-                image: null,
-                // creatorDid: "",
-            });
+            // setCause({
+            //     title: "",
+            //     name: "",
+            //     target: "",
+            //     deadline: "",
+            //     description: "",
+            //     image: null,
+            //     // creatorDid: "",
+            // });
       
             // reload the page 
             }
@@ -277,8 +305,9 @@ const Create = () => {
   };
 
 
-  const fetchCampaigns = async (web5: { dwn: { records: { query: (arg0: { message: { filter: { protocol: string; protocolPath: string; }; dateSort: string; }; }) => PromiseLike<{ records: any; status: any; }> | { records: any; status: any; }; }; }; }, did: any) => {
+  const fetchCampaigns = async (web5, did) => {
     const { records, status: recordStatus } = await web5.dwn.records.query({
+      from: did,
       message: {
         filter: {
           protocol: "https://shegefund.com/fundraise-protocol",
@@ -291,7 +320,7 @@ const Create = () => {
     console.log(records);
     try {
       const results = await Promise.all(
-        records.map(async (record: { data: { json: () => any; }; }) => record.data.json())
+        records.map(async (record) => record.data.json())
       );
     
       if (recordStatus.code == 200) {
