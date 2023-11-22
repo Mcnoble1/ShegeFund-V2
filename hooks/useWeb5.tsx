@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Web5 } from "@web5/api/browser";
+import { Web5 } from "@web5/api";
 import { webcrypto } from 'node:crypto';
 
 // @ts-ignore
