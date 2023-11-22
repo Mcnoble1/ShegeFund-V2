@@ -1,0 +1,33 @@
+import { useEffect, useState } from 'react';
+import { Web5 } from "@web5/api/browser";
+import { webcrypto } from 'node:crypto';
+
+// @ts-ignore
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
+
+const useWeb5 = () => {
+  const [web5, setWeb5] = useState(null);
+  const [myDid, setMyDid] = useState(null);
+
+  useEffect(() => {
+    const initWeb5 = async () => {
+      try {
+        const { web5, did } = await Web5.connect({sync: '5s'});
+        setWeb5(web5);
+        setMyDid(did);
+
+        if (web5 && did) {
+          console.log('Web5 initialized:', web5, did);
+        }
+      } catch (error) {
+        console.error('Error initializing Web5:', error);
+      }
+    };
+
+    initWeb5();
+  }, []);
+
+  return { web5, myDid };
+};
+
+export default useWeb5;
