@@ -8,10 +8,6 @@ const Header = () => {
 
   const { web5, myDid } = useWeb5();
 
-  useEffect(() => {
-       console.log('Header:', web5, myDid);
-     }, [web5, myDid]);
-
   // Navbar toggle
   const [navbarOpen, setNavbarOpen] = useState(false);
   const navbarToggleHandler = () => {
@@ -33,7 +29,7 @@ const Header = () => {
 
 
 // Function to shorten the DID
-function shortenDID(did, length) {
+const shortenDID = (did, length) => {
   if (did.length <= length) {
     return did;
   } else {
@@ -105,7 +101,7 @@ function shortenDID(did, length) {
                 <button
                   className="ease-in-up hidden rounded-md bg-primary py-3 px-8 text-base font-bold text-white transition duration-300 hover:bg-opacity-90 hover:shadow-signUp md:block md:px-9 lg:px-6 xl:px-9"
                 >
-                 {myDid ? shortenDID(myDid, 20) : 'Connect'}
+                 {myDid ? shortenDID(myDid, 15) : 'Connect'}
                 </button>
                 <div>
                   <ThemeToggler />

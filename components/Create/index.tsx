@@ -8,6 +8,7 @@ import "../../styles/index.css";
 const Create = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [fetchLoading, setFetchLoading] = useState<boolean>(false);
     const [recipientDid, setRecipientDid] = useState("");
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("personal");
@@ -18,39 +19,38 @@ const Create = () => {
     const [target, setTarget] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
-    const [image, setImage] = useState<File | null>(null);
+    const [image, setImage] = useState(null);
 
     const { web5, myDid } = useWeb5();
 
     useEffect(() => {
-      console.log('Create page:', web5, myDid);
       const configure = async () => {
       if (web5 && myDid) {
         await configureProtocol(web5, myDid);
       }
     };
     configure();
-  }, [web5, myDid]);
+  }, [myDid, web5]);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);  
+  // const fileInputRef = useRef<HTMLInputElement | "">("");  
 
-  const queryLocalProtocol = async (web5) => {
+  const queryLocalProtocol = async (web5, protocolUrl) => {
     return await web5.dwn.protocols.query({
       message: {
         filter: {
-          protocol: "https://shegefund.com/fundraise-protocol",
+          protocol: protocolUrl,
         },
       },
     });
   };
 
 
-  const queryRemoteProtocol = async (web5, did) => {
+  const queryRemoteProtocol = async (web5, did, protocolUrl) => {
     return await web5.dwn.protocols.query({
       from: did,
       message: {
         filter: {
-          protocol: "https://shegefund.com/fundraise-protocol",
+          protocol: protocolUrl,
         },
       },
     });
@@ -111,6 +111,7 @@ const Create = () => {
     };
   };
     
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const configureProtocol = async (web5, did) => {
     const protocolDefinition = fundraiseProtocolDefinition();
     const protocolUrl = protocolDefinition.protocol;
@@ -120,14 +121,19 @@ const Create = () => {
       const result = await installLocalProtocol(web5, protocolDefinition);
       console.log({ result })
       console.log("Fundraise Protocol installed locally");
-    }
+    } else {
+      console.log(localProtocols, "Fundraise Protocol already installed locally");
+      }
+
 
     const { protocols: remoteProtocols, status: remoteProtocolStatus } = await queryRemoteProtocol(web5, did, protocolUrl);
     if (remoteProtocolStatus.code !== 200 || remoteProtocols.length === 0) {
       const result = await installRemoteProtocol(web5, did, protocolDefinition);
       console.log({ result })
       console.log("Fundraise Protocol installed remotely");
-    }  
+    }  else {
+      console.log(remoteProtocols, "Fundraise Protocol already installed remotely");
+      }
   };
   
 
@@ -167,7 +173,7 @@ const Create = () => {
       };
 
         // Create a mixed record and 
-  const writeSecretCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string) => {
+  const writeSecretCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: File) => {
     let base64Image = null;
 
     if (image) {
@@ -230,10 +236,11 @@ const Create = () => {
 };
 
 
-const writeDirectCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, recipientDid: string ) => {
+const writeDirectCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: File, recipientDid: string ) => {
   let base64Image = null;
 
   if (image) {
+    console.log(image)
     const reader = new FileReader();
     // Use a promise to handle the asynchronous read operation
     const readImage = new Promise<string>((resolve, reject) => {
@@ -253,6 +260,8 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       throw error;
     }
   }
+
+  console.log(base64Image);
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
@@ -326,9 +335,9 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       let record;
 
       if (campaignType === 'personal') {
-        record = await writeSecretCauseToDwn(title, name, target, description, deadline);
+        record = await writeSecretCauseToDwn(title, name, target, description, deadline, image,);
       } else {
-        record = await writeDirectCauseToDwn(title, name, target, description, deadline, targetDid);
+        record = await writeDirectCauseToDwn(title, name, target, description, deadline, image, targetDid);
       }
 
       if (record) {
@@ -345,7 +354,8 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       setTarget("");
       setDeadline("");
       setDescription("");
-      setImage(null);
+      setImage("");
+      setRecipientDid("");
       
       toast.success('Cause created successfully.', {
         position: toast.POSITION.TOP_RIGHT,
@@ -376,11 +386,13 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
         },
       },
     });
-    
+    console.log(response);
+    console.log(response.status.code);
     if (response.status.code === 200) {
       const personalCampaigns = await Promise.all(
         response.records.map(async (record) => {
           const data = await record.data.json();
+          console.log('Personal Campaigns:', data);
           return {
             ...data, 
             recordId: record.id 
@@ -408,11 +420,14 @@ const fetchPublicCampaigns = async () => {
       },
     },
   });
-
+  console.log(response);
+  console.log(response.status.code);
+  console.log(response.records);
   if (response.status.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
+        console.log('Public Campaigns:', data);
         return {
           ...data, 
           recordId: record.id 
@@ -430,24 +445,20 @@ const fetchPublicCampaigns = async () => {
 };
 
 const fetchCampaigns = async () => {
-  setLoading(true);
+  setFetchLoading(true);
   console.log('Fetching campaigns...');
   try {
     const personalCampaigns = await fetchPersonalCampaigns();
     const publicCampaigns = await fetchPublicCampaigns();
     const campaigns = [...personalCampaigns, ...publicCampaigns];
     setCampaigns(campaigns);
-    setLoading(false);
+    console.log('Campaigns:', campaigns);
+    setFetchLoading(false);
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
-    setLoading(false);
+    setFetchLoading(false);
   }
 }
-
-useEffect(() => {
-  fetchCampaigns();
-}
-, []);
 
 const handleCopyDid = async () => {
   if (myDid) {
@@ -662,7 +673,6 @@ const updateCampaign = async (recordId, data) => {
                               const selectedImage = e.target.files?.[0];
                               setImage(selectedImage);
                             }}
-                            ref={fileInputRef}
                             required
                             className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                           />
@@ -714,22 +724,6 @@ const updateCampaign = async (recordId, data) => {
                         )}
                       </button>
                     </div>
-                    <div className="w-full px-4">
-                      <button 
-                        type="button"
-                        onClick={fetchCampaigns}                        
-                        disabled={loading}
-                        className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                         {loading ? (
-                          <div className="flex items-center">
-                            <div className="spinner"></div>
-                            <span className="pl-1">Fetching...</span>
-                          </div>
-                        ) : (
-                          <>Fetch Campaigns</>
-                        )}
-                      </button>
-                    </div>
                   </div>
                 </form>
               </div>
@@ -766,24 +760,61 @@ const updateCampaign = async (recordId, data) => {
                 <p className="mb-12 text-base font-medium text-body-color">
                   View and manage your campaigns.
                 </p>
+                <div className="w-full px-4">
+                      <button 
+                        type="button"
+                        onClick={fetchCampaigns}                        
+                        disabled={fetchLoading}
+                        className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                         {fetchLoading ? (
+                          <div className="flex items-center">
+                            <div className="spinner"></div>
+                            <span className="pl-1">Fetching...</span>
+                          </div>
+                        ) : (
+                          <>Fetch Campaigns</>
+                        )}
+                      </button>
+                    </div>
                 <div className="relative">
                   {campaigns.length > 0 ? (
                     <div className="space-y-4">
-                      {campaigns.map((campaign) => (
+                      {campaigns.map((campaign, index) => (
                         <div
-                          key={campaign.recordId}
+                          key={index}
                           className="flex items-center justify-between px-4 py-3 bg-white rounded-md shadow-one dark:bg-[#242B51]"
                         >
                           <div className="flex items-center">
                             <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xl">
-                              {campaign.name[0]}
+                              {campaign.name}
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-black dark:text-white">
                                 {campaign.title}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.name}
+                                {campaign.target}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.deadline}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.description}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.timestamp}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.type}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.recipientDid}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.sender}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {campaign.image}
                               </div>
                             </div>
                           </div>
