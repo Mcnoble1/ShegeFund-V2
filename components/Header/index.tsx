@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Web5 } from "@web5/api/browser";
-import Image from "next/image";
+import useWeb5 from '../../hooks/useWeb5';  
 import Link from "next/link";
 import ThemeToggler from "./ThemeToggler";
-import { webcrypto } from 'node:crypto';
 
-// @ts-ignore
-if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 const Header = () => {
 
-  // Web5 
-  const [web5, setWeb5] = useState(null);
-  const [myDid, setMyDid] = useState("Connect");
+  const { web5, myDid } = useWeb5();
+
+  useEffect(() => {
+       console.log('Header:', web5, myDid);
+     }, [web5, myDid]);
 
   // Navbar toggle
   const [navbarOpen, setNavbarOpen] = useState(false);
@@ -45,17 +43,7 @@ function shortenDID(did, length) {
   }
 }
 
-// useEffect(() => {
-// const initWeb5 = async () => {
-//   const { web5, did } = await Web5.connect();
-//   setWeb5(web5);
-//   console.log(web5);
-//   localStorage.setItem('did', did);
-//   const shortenedDID = shortenDID(did, 15);
-//   setMyDid(shortenedDID);
-// };
-// initWeb5();
-// }, []);
+
   
 
   return (
@@ -69,27 +57,14 @@ function shortenDID(did, length) {
       >
         <div className="container">
           <div className="relative -mx-4 flex items-center justify-between">
-            <div className="w-60 max-w-full px-4 xl:mr-12">
+            <div className="w-60 text-3xl font-bold max-w-full px-4 xl:mr-12">
               <Link
                 href="/"
                 className={`header-logo block w-full ${
                   sticky ? "py-5 lg:py-2" : "py-8"
                 } `}
               >
-                <Image
-                  src="/images/logo/logo-2.svg"
-                  alt="logo"
-                  width={140}
-                  height={30}
-                  className="w-full dark:hidden"
-                />
-                <Image
-                  src="/images/logo/logo.svg"
-                  alt="logo"
-                  width={140}
-                  height={30}
-                  className="hidden w-full dark:block"
-                />
+                ShegeFund
               </Link>
             </div>
             <div className="flex w-full items-center justify-between px-4">
@@ -130,7 +105,7 @@ function shortenDID(did, length) {
                 <button
                   className="ease-in-up hidden rounded-md bg-primary py-3 px-8 text-base font-bold text-white transition duration-300 hover:bg-opacity-90 hover:shadow-signUp md:block md:px-9 lg:px-6 xl:px-9"
                 >
-                 {myDid}
+                 {myDid ? shortenDID(myDid, 20) : 'Connect'}
                 </button>
                 <div>
                   <ThemeToggler />
