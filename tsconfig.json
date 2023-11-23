@@ -3,7 +3,8 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@web5/api/browser": ["web5/browser"]
     },
     "allowJs": true,
     "skipLibCheck": true,
