@@ -14,8 +14,8 @@ const useWeb5 = () => {
 
       const initWeb5 = async () => {
         // @ts-ignore
-
-        const Web5 = await import('@web5/api/browser');
+        const { Web5 } = await import('@web5/api/browser');
+        
         try {
           const { web5, did } = await Web5.connect({sync: '5s'});
           setWeb5(web5);
