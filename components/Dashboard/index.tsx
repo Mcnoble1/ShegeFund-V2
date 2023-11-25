@@ -8,11 +8,13 @@ import "../../styles/index.css";
 const Dashboard = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [donationLoading, setDonationLoading] = useState(false)
   const [fetchLoading, setFetchLoading] = useState<boolean>(false);
     const [recipientDid, setRecipientDid] = useState("");
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("personal");
     const [campaigns, setCampaigns] = useState([]);
+    const [donations, setDonations] = useState([]);
     const [submitStatus, setSubmitStatus] = useState("");
     const [amount, setAmount] = useState("");
     const [title, setTitle] = useState("");
@@ -24,7 +26,7 @@ const Dashboard = () => {
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
 
-
+  let pc = [];
 
     const { web5, myDid } = useWeb5();
 
@@ -139,7 +141,6 @@ const Dashboard = () => {
     } else {
       console.log(localProtocols, "Fundraise Protocol already installed locally");
       }
-
 
     const { protocols: remoteProtocols, status: remoteProtocolStatus } = await queryRemoteProtocol(web5, did, protocolUrl);
     if (remoteProtocolStatus.code !== 200 || remoteProtocols.length === 0) {
@@ -386,10 +387,10 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       }
   };
 
-  const fetchPersonalCampaigns = async () => {
+  const fetchPersonalCampaigns = async (web5) => {
     console.log('Fetching personal campaigns...');
     try {
-    const response = await web5.dwn.records.query({
+    const { records } = await web5.dwn.records.query({
       from: myDid,
       message: {
         filter: {
@@ -398,31 +399,41 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
         },
       },
     });
-    console.log(response);
-    console.log(response.status.code);
-    if (response.status.code === 200) {
-      const personalCampaigns = await Promise.all(
-        response.records.map(async (record) => {
-          const data = await record.data.json();
-          console.log('Personal Campaigns:', data);
-          return {
-            ...data, 
-            recordId: record.id 
-          };
-        })
-      );
-      return personalCampaigns;
-    } else {
-      console.error('Error fetching personal campaigns:', response.status);
-      return [];
-    }
+
+    console.log("Saved records", records);
+
+    for (let record of records) {
+      const data = await record.data.json();
+      const list = {record, data, id: record.id};
+      pc.push(list);
+  }
+
+  console.log("Personal Campaigns:", pc);
+    // console.log(response);
+    // console.log(response.status.code);
+    // if (response.status.code === 200) {
+    //   const personalCampaigns = await Promise.all(
+    //     response.records.map(async (record) => {
+    //       const data = await record.data.json();
+    //       console.log('Personal Campaigns:', data);
+    //       return {
+    //         ...data, 
+    //         recordId: record.id 
+    //       };
+    //     })
+    //   );
+    //   return personalCampaigns;
+    // } else {
+    //   console.error('Error fetching personal campaigns:', response.status);
+    //   return [];
+    // }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
   }
 };
 
 
-const fetchPublicCampaigns = async () => {
+const fetchPublicCampaigns = async (web5) => {
   console.log('Fetching public campaigns...');
   try {
   const response = await web5.dwn.records.query({
@@ -435,7 +446,7 @@ const fetchPublicCampaigns = async () => {
   console.log(response);
   console.log(response.status.code);
   console.log(response.records);
-  if (response.status.code === 200) {
+  if (response?.status?.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
@@ -460,8 +471,15 @@ const fetchCampaigns = async () => {
   setFetchLoading(true);
   console.log('Fetching campaigns...');
   try {
-    const personalCampaigns = await fetchPersonalCampaigns();
-    const publicCampaigns = await fetchPublicCampaigns();
+    const personalCampaigns = await fetchPersonalCampaigns(web5);
+    const publicCampaigns = await fetchPublicCampaigns(web5);
+    
+    // const campaigns = [...personalCampaigns, ...publicCampaigns]; // Assign the merged campaigns to the 'campaigns' variable
+    
+    if (!Array.isArray(personalCampaigns) || !Array.isArray(publicCampaigns)) {
+      throw new Error('Invalid campaign data');
+    }
+    
     const campaigns = [...personalCampaigns, ...publicCampaigns];
     setCampaigns(campaigns);
     console.log('Campaigns:', campaigns);
@@ -664,7 +682,33 @@ if (emptyFields.length > 0) {
   }
 };
 
+const deleteDonation = async (recordId) => {
+  try {
+    const response = await web5.dwn.records.query({
+      message: {
+        filter: {
+          recordId: recordId,
+        },
+      },
+    });
 
+    if (response.records && response.records.length > 0) {
+      const record = response.records[0];
+      const deleteResult = await record.delete();
+
+      if (deleteResult.status.code === 202) {
+        console.log('Donation deleted successfully');
+        setDonations(prevDonations => prevDonations.filter(message => message.recordId !== recordId));
+      } else {
+        console.error('Error deleting message:', deleteResult.status);
+      }
+    } else {
+      console.error('No record found with the specified ID');
+    }
+  } catch (error) {
+    console.error('Error in deleteDonation:', error);
+  }
+};
     
     return (
       <section id="contact" className="overflow-hidden py-16 md:py-20 lg:py-10">
@@ -1179,10 +1223,10 @@ if (emptyFields.length > 0) {
                   <div className="">
                         <button 
                           type="button"
-                          onClick={fetchCampaigns}                        
-                          disabled={fetchLoading}
+                          onClick={fetchDonations}                        
+                          disabled={loading}
                           className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                          {fetchLoading ? (
+                          {loading ? (
                             <div className="flex items-center">
                               <div className="spinner"></div>
                               <span className="pl-1">Fetching...</span>
@@ -1195,50 +1239,35 @@ if (emptyFields.length > 0) {
                 </div>
                
                 <div className="relative">
-                  {campaigns.length > 0 ? (
+                  {donations.length > 0 ? (
                     <div className="space-y-4">
-                      {campaigns.map((campaign, index) => (
+                      {donations.map((donation, index) => (
                         <div
                           key={index}
                           className="flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow-one dark:bg-[#242B51]"
                         >
                           <div className="flex items-center">
                             <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xl">
-                              {campaign.name}
+                              {donation.name}
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-black dark:text-white">
-                                {campaign.title}
+                                {donation.amount}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.target}
+                                {donation.timestamp}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.deadline}
+                                {donation.recipientDid}
                               </div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.description}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.timestamp}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.type}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.recipientDid}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.sender}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.image}
+                                {donation.sender}
                               </div>
                             </div>
                           </div>
                           <div className="flex items-center">
                             <button
-                              onClick={() => deleteCampaign(campaign.recordId)}
+                              onClick={() => deleteDonation(donation.recordId)}
                               className="text-sm font-medium text-red-500 dark:text-red-400"
                             >
                               Delete
