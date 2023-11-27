@@ -390,7 +390,7 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
   const fetchPersonalCampaigns = async (web5) => {
     console.log('Fetching personal campaigns...');
     try {
-    const { records } = await web5.dwn.records.query({
+    const { response } = await web5.dwn.records.query({
       from: myDid,
       message: {
         filter: {
@@ -400,29 +400,22 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       },
     });
 
-    console.log("Saved records", records);
-
-    for (let record of records) {
-      const data = await record.data.json();
-      const list = {record, data, id: record.id};
-      pc.push(list);
-  }
-
-  console.log("Personal Campaigns:", pc);
-    // console.log(response);
+ 
+    console.log(response);
     // console.log(response.status.code);
     // if (response.status.code === 200) {
-    //   const personalCampaigns = await Promise.all(
-    //     response.records.map(async (record) => {
-    //       const data = await record.data.json();
-    //       console.log('Personal Campaigns:', data);
-    //       return {
-    //         ...data, 
-    //         recordId: record.id 
-    //       };
-    //     })
-    //   );
-    //   return personalCampaigns;
+      const personalCampaigns = await Promise.all(
+        response.map(async (record) => {
+          console.log(await record.data.json());
+          const data = await record.data.json();
+          console.log('Personal Campaigns:', data);
+          return {
+            ...data, 
+            recordId: record.id 
+          };
+        })
+      );
+      return personalCampaigns;
     // } else {
     //   console.error('Error fetching personal campaigns:', response.status);
     //   return [];
