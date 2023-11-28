@@ -13,6 +13,8 @@ const Dashboard = () => {
     const [recipientDid, setRecipientDid] = useState("");
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("personal");
+    const [personalCampaigns, setPersonalCampaigns] = useState([]);
+    const [publicCampaigns, setPublicCampaigns] = useState([]);
     const [campaigns, setCampaigns] = useState([]);
     const [donations, setDonations] = useState([]);
     const [submitStatus, setSubmitStatus] = useState("");
@@ -22,11 +24,9 @@ const Dashboard = () => {
     const [target, setTarget] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
-    const [image, setImage] = useState(null);
+    const [image, setImage] = useState("");
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
-
-  let pc = [];
 
     const { web5, myDid } = useWeb5();
 
@@ -40,27 +40,35 @@ const Dashboard = () => {
   }, [myDid, web5]);
 
   // const fileInputRef = useRef<HTMLInputElement | "">(""); 
+
+  useEffect(() => {
+    if (donatePopupOpen || createPopupOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+  }, [donatePopupOpen, createPopupOpen]);
   
   const trigger = useRef<HTMLButtonElement | null>(null);
   const popup = useRef<HTMLDivElement | null>(null);
 
-  const queryLocalProtocol = async (web5, protocolUrl) => {
+  const queryLocalProtocol = async (web5) => {
     return await web5.dwn.protocols.query({
       message: {
         filter: {
-          protocol: protocolUrl,
+          protocol: "https://shegefund.com/fundraise-proc",
         },
       },
     });
   };
 
 
-  const queryRemoteProtocol = async (web5, did, protocolUrl) => {
+  const queryRemoteProtocol = async (web5, did) => {
     return await web5.dwn.protocols.query({
       from: did,
       message: {
         filter: {
-          protocol: protocolUrl,
+          protocol: "https://shegefund.com/fundraise-proc",
         },
       },
     });
@@ -87,19 +95,19 @@ const Dashboard = () => {
   
     const fundraiseProtocolDefinition = () => {
       return {
-        protocol: "https://shegefund.com/fundraise-protocol",
+        protocol: "https://shegefund.com/fundraise-proc",
         published: true,
         types: {
             personalCause: {
-                schema: "https://shegefund.com/personalCauseSchema",
+                schema: "https://shegefund.com/fundraise-proc/personalCauseSchema",
                 dataFormats: ["application/json"],
             },
             directCause: {
-              schema: "https://shegefund.com/directCauseSchema",
+              schema: "https://shegefund.com/fundraise-proc/directCauseSchema",
               dataFormats: ["application/json"],
           },
             donate: {
-                schema: "https://shegefund.com/donateSchema",
+                schema: "https://shegefund.com/fundraise-proc/donateSchema",
                 dataFormats: ["application/json"],
               },
         },
@@ -157,7 +165,7 @@ const Dashboard = () => {
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
             
-          if ( name === 'target') {
+          if ( name === 'target' || name === 'amount') {
             // Use a regular expression to allow only phone numbers starting with a plus
             const phoneRegex = /^[+]?[0-9\b]+$/;
               
@@ -184,6 +192,8 @@ const Dashboard = () => {
             setDeadline(value);
         } else if (name === 'description') {
             setDescription(value);
+        } else if (name === 'amount') {
+          setAmount(value);
         }
       
       };
@@ -360,7 +370,7 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
         const { status } = await record.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
         setSubmitStatus('Message submitted successfully');
-        await fetchCampaigns();
+        await fetchCampaigns(web5, myDid);
       } else {
         throw new Error('Failed to create record');
       }
@@ -372,6 +382,8 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       setDescription("");
       setImage("");
       setRecipientDid("");
+
+      setCreatePopupOpen(false);
       
       toast.success('Cause created successfully.', {
         position: toast.POSITION.TOP_RIGHT,
@@ -387,52 +399,52 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       }
   };
 
-  const fetchPersonalCampaigns = async (web5) => {
+  const fetchPersonalCampaigns = async (web5, did) => {
     console.log('Fetching personal campaigns...');
     try {
-    const { response } = await web5.dwn.records.query({
-      from: myDid,
+    const response  = await web5.dwn.records.query({
+      // from: myDid,
       message: {
         filter: {
-          protocol: "https://shegefund.com/fundraise-protocol",
-          schema: "https://shegefund.com/personalCauseSchema",
+          protocol: "https://shegefund.com/fundraise-proc",
+          schema: "https://shegefund.com/fundraise-proc/personalCauseSchema",
         },
       },
     });
 
  
     console.log(response);
-    // console.log(response.status.code);
-    // if (response.status.code === 200) {
+    console.log(response.status.code);
+    if (response.status.code === 200) {
       const personalCampaigns = await Promise.all(
-        response.map(async (record) => {
-          console.log(await record.data.json());
+        response.records.map(async (record) => {
+          // console.log(await record.data.json());
           const data = await record.data.json();
           console.log('Personal Campaigns:', data);
-          return {
-            ...data, 
-            recordId: record.id 
-          };
+          return data;
+          // return {
+          //   ...data, 
+          //   recordId: record.id 
+          // };
         })
       );
       return personalCampaigns;
-    // } else {
-    //   console.error('Error fetching personal campaigns:', response.status);
-    //   return [];
-    // }
+    } else {
+      console.error('Error fetching personal campaigns:', response.status);
+    }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
   }
 };
 
 
-const fetchPublicCampaigns = async (web5) => {
+const fetchPublicCampaigns = async (web5, did) => {
   console.log('Fetching public campaigns...');
   try {
   const response = await web5.dwn.records.query({
     message: {
       filter: {
-        protocol: "https://shegefund.com/fundraise-protocol",
+        protocol: "https://shegefund.com/fundraise-proc",
       },
     },
   });
@@ -444,37 +456,33 @@ const fetchPublicCampaigns = async (web5) => {
       response.records.map(async (record) => {
         const data = await record.data.json();
         console.log('Public Campaigns:', data);
-        return {
-          ...data, 
-          recordId: record.id 
-        };
+        return data;
+        // return {
+        //   ...data, 
+        //   recordId: record.id 
+        // };
       })
     );
     return publicCampaigns;
   } else {
     console.error('Error fetching public campaigns:', response.status);
-    return [];
   } 
   } catch (error) {
     console.error('Error in fetchPublicCampaigns:', error);
   }
 };
 
-const fetchCampaigns = async () => {
+const fetchCampaigns = async (web5, myDid) => {
   setFetchLoading(true);
   console.log('Fetching campaigns...');
   try {
-    const personalCampaigns = await fetchPersonalCampaigns(web5);
-    const publicCampaigns = await fetchPublicCampaigns(web5);
+    const personalCampaigns = await fetchPersonalCampaigns(web5, myDid);
+    const publicCampaigns = await fetchPublicCampaigns(web5, myDid);
     
-    // const campaigns = [...personalCampaigns, ...publicCampaigns]; // Assign the merged campaigns to the 'campaigns' variable
+    const allCampaigns = [...(personalCampaigns || []), ...(publicCampaigns || [])]; 
+    setCampaigns(allCampaigns)
     
-    if (!Array.isArray(personalCampaigns) || !Array.isArray(publicCampaigns)) {
-      throw new Error('Invalid campaign data');
-    }
-    
-    const campaigns = [...personalCampaigns, ...publicCampaigns];
-    setCampaigns(campaigns);
+   
     console.log('Campaigns:', campaigns);
     setFetchLoading(false);
   } catch (error) {
@@ -1122,7 +1130,7 @@ const deleteDonation = async (recordId) => {
                 <div className="">
                       <button 
                         type="button"
-                        onClick={fetchCampaigns}                        
+                        onClick={() => fetchCampaigns(web5, myDid)}                        
                         disabled={fetchLoading}
                         className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
                          {fetchLoading ? (
