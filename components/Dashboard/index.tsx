@@ -139,32 +139,32 @@ const Dashboard = () => {
   };
 
 
-  const getImageFromBlob = (blob) => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+//   const getImageFromBlob = (blob) => {
+//     return new Promise((resolve, reject) => {
+//         const reader = new FileReader();
 
-        reader.onload = function (e) {
-            const imageDataUrl = e.target.result;
-            const image = new Image();
+//         reader.onload = function (e) {
+//             const imageDataUrl = e.target.result;
+//             const image = new Image();
 
-            // Set the source of the image to the data URL
-            image.src = imageDataUrl;
+//             // Set the source of the image to the data URL
+//             image.src = imageDataUrl;
 
-            // Set up the onload event for the image to ensure it's fully loaded before resolving the Promise
-            image.onload = function () {
-                resolve(image);
-            };
+//             // Set up the onload event for the image to ensure it's fully loaded before resolving the Promise
+//             image.onload = function () {
+//                 resolve(image);
+//             };
 
-            // Set up the onerror event for the image in case there's an issue loading it
-            image.onerror = function () {
-                reject(new Error('Error loading image.'));
-            };
-        };
+//             // Set up the onerror event for the image in case there's an issue loading it
+//             image.onerror = function () {
+//                 reject(new Error('Error loading image.'));
+//             };
+//         };
 
-        // Read the Blob as a data URL
-        reader.readAsDataURL(blob);
-    });
-}
+//         // Read the Blob as a data URL
+//         reader.readAsDataURL(blob);
+//     });
+// }
 
   const shortenDID = (did, length) => {
     if (did.length <= length) {
@@ -493,7 +493,9 @@ console.log(recipientDid);
       },
     });
 
-    const personalCampaigns =  await Promise.all(
+    
+    if (response.status.code === 200) {
+      const personalCampaigns =  await Promise.all(
         response.records.map(async (record) => {
           console.log(record)
           const data = await record.data.json();
@@ -507,8 +509,6 @@ console.log(recipientDid);
     );
       
       return personalCampaigns;
-    if (response.status.code === 200) {
-      
     } else {
       console.error('Error fetching personal campaigns:', response.status);
     }
