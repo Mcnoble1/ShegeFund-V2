@@ -416,7 +416,7 @@ console.log(recipientDid);
     console.log('Submitting message...');
     setLoading(true); 
 
-  const requiredFields = ['title', 'name', 'target', 'deadline', 'description', 'image'];
+  const requiredFields = ['title', 'name', 'target', 'deadline', 'description'];
   const emptyFields = requiredFields.filter((field) => ![field]);
 
   if (emptyFields.length > 0) {
@@ -650,6 +650,7 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
     amount: amount,
     timestamp: `${currentDate} ${currentTime}`,
     sender: myDid, 
+    recipientDid: recipientDid,
   };
 
   try {
@@ -660,7 +661,7 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
         protocol: fundraiseProtocol.protocol,
         protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
-        recipient: recipientDid,
+        recipient: donationData.recipientDid,
     },
   });
 
@@ -711,7 +712,7 @@ const handleDonation = async (e: FormEvent) => {
 
       if (record) {
         const { status } = await record.send(recipientDid);
-        console.log("Send record status in handleCreateCause", status);
+        console.log("Send record status in handleDonation", status);
         await fetchDonations();
       } else {
         throw new Error('Failed to create record');
@@ -933,7 +934,7 @@ const deleteDonation = async (recordId) => {
                                         htmlFor="target"
                                         className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                       >
-                                        Target
+                                        Target (USD)
                                       </label>
                                       <div>
                                       <input
@@ -1159,7 +1160,7 @@ const deleteDonation = async (recordId) => {
                                   htmlFor="title"
                                   className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                 >
-                                  Amount
+                                  Amount (USD)
                                 </label>
                                 <div>
                                 <input
@@ -1282,7 +1283,7 @@ const deleteDonation = async (recordId) => {
                                 </h4>
                               </div>
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Target</span>
+                                <span className="text-md">Target (USD)</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
                                   {campaign.target}
                                 </h4>
@@ -1321,9 +1322,9 @@ const deleteDonation = async (recordId) => {
                                 </h4>
                               </div>
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Amount Raised</span>
+                                <span className="text-md">Amount Raised (USD)</span>
                                 <h4 className="text-sm mt-1 text-black dark:text-white">
-                                  {/* {campaign.amountRaised} */}
+                                  {campaign.amountRaised}
                                 </h4>
                               </div>
                               <div className="w-1/2 mb-5  text-gray-500 dark:text-gray-400">
@@ -1428,7 +1429,7 @@ const deleteDonation = async (recordId) => {
                                             htmlFor="target"
                                             className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                           >
-                                            Target
+                                            Target (USD)
                                           </label>
                                           <div>
                                           <input
@@ -1650,7 +1651,7 @@ const deleteDonation = async (recordId) => {
                                 </h4>
                               </div>
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Amount</span>
+                                <span className="text-md">Amount (USD)</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
                                   {donation.amount}
                                 </h4>
