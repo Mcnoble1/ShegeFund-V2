@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, ChangeEvent, FormEvent } from "react";
 import useWeb5 from '../../hooks/useWeb5';  // Adjust the path based on your project structure
 // import { useNavigate } from 'react-router-dom'; 
+import Image from 'next/image';
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
@@ -15,18 +16,25 @@ const Dashboard = () => {
     const [campaignType, setCampaignType] = useState("personal");
     const [campaigns, setCampaigns] = useState([]);
     const [donations, setDonations] = useState([]);
-    const [submitStatus, setSubmitStatus] = useState("");
     const [amount, setAmount] = useState("");
+    const [amountRaised, setAmountRaised] = useState(0);
     const [title, setTitle] = useState("");
     const [name, setName] = useState("");
     const [target, setTarget] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
-    const [image, setImage] = useState(null);
+    const [imageBlob, setImageBlob] = useState(null);
+    const [filterOption, setFilterOption] = useState<string>(''); 
+    const [popupOpenMap, setPopupOpenMap] = useState<{ [key: number]: boolean }>({});
+    const [isDeleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
+    const [campaignToDeleteId, setCampaignToDeleteId] = useState<string | null>(null);
+    const [filterDropdownVisible, setFilterDropdownVisible] = useState(false);
+
+
+    // const [imageDataURL, setImageDataURL] = useState<string | null>(null);
+
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
-
-  let pc = [];
 
     const { web5, myDid } = useWeb5();
 
@@ -34,33 +42,157 @@ const Dashboard = () => {
       const configure = async () => {
       if (web5 && myDid) {
         await configureProtocol(web5, myDid);
+        await fetchCampaigns(web5, myDid);
+        await fetchDonations();
       }
     };
     configure();
   }, [myDid, web5]);
 
-  // const fileInputRef = useRef<HTMLInputElement | "">(""); 
+  const fileInputRef = useRef<HTMLInputElement | null>(null); 
+
+  useEffect(() => {
+    if (donatePopupOpen || createPopupOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+  }, [donatePopupOpen, createPopupOpen]);
   
   const trigger = useRef<HTMLButtonElement | null>(null);
   const popup = useRef<HTMLDivElement | null>(null);
 
-  const queryLocalProtocol = async (web5, protocolUrl) => {
+  const togglePopup = (recordId: string) => {
+    campaigns.map((campaign) => { 
+      if (campaign.recordId === recordId) {
+        setTitle(campaign.title);
+        setName(campaign.name);
+        setTarget(campaign.target);
+        setDeadline(campaign.deadline);
+        setDescription(campaign.description);
+        // setImageBlob(campaign.image);
+      }
+    });
+    setPopupOpenMap((prevMap) => ({
+      ...prevMap,
+      [recordId]: !prevMap[recordId],
+    }));
+  };
+
+   // Function to close the popup for a specific campaign
+   const closePopup = (recordId: string) => {
+    setPopupOpenMap((prevMap) => ({
+      ...prevMap,
+      [recordId]: false,
+    }));
+  };
+
+  const showDeleteConfirmation = (recordId: string) => {
+    setCampaignToDeleteId(recordId);
+    setDeleteConfirmationVisible(true);
+  };
+
+  const hideDeleteConfirmation = () => {
+    setCampaignToDeleteId(null);
+    setDeleteConfirmationVisible(false);
+  };
+
+  const toggleFilterDropdown = () => {
+    setFilterDropdownVisible(!filterDropdownVisible);
+  };
+
+  const handleFilter = (option: string) => {
+    let filteredCampaigns = [...campaigns];
+
+    if (option === 'personal') {
+      filteredCampaigns = filteredCampaigns.filter((campaign) => campaign.type === 'personal');
+    } else if (option === 'public') {
+      filteredCampaigns = filteredCampaigns.filter((campaign) => campaign.type === 'public');
+    } else if (option === 'all') {
+     fetchCampaigns(web5, myDid);
+    }
+
+    setCampaigns(filteredCampaigns);
+    setFilterOption(option);
+    setFilterDropdownVisible(false);
+  };
+
+
+
+  const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files[0];
+
+    if (file) {
+      // Use FileReader to read the file as binary data
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        // Create a Blob from the binary data
+        const blob = new Blob([reader.result], { type: file.type });
+        setImageBlob(blob);
+        console.log(blob);
+      };
+
+      // Read the file as binary data
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+
+  const getImageFromBlob = (blob) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const imageDataUrl = e.target.result;
+            const image = new Image();
+
+            // Set the source of the image to the data URL
+            image.src = imageDataUrl;
+
+            // Set up the onload event for the image to ensure it's fully loaded before resolving the Promise
+            image.onload = function () {
+                resolve(image);
+            };
+
+            // Set up the onerror event for the image in case there's an issue loading it
+            image.onerror = function () {
+                reject(new Error('Error loading image.'));
+            };
+        };
+
+        // Read the Blob as a data URL
+        reader.readAsDataURL(blob);
+    });
+}
+
+  const shortenDID = (did, length) => {
+    if (did.length <= length) {
+      return did;
+    } else {
+      const start = did.substring(0, length);
+      const end = '...';
+      return start + end;
+    }
+  }
+
+  const queryLocalProtocol = async (web5) => {
     return await web5.dwn.protocols.query({
       message: {
         filter: {
-          protocol: protocolUrl,
+          protocol: "https://shege.xyz",
         },
       },
     });
   };
 
 
-  const queryRemoteProtocol = async (web5, did, protocolUrl) => {
+  const queryRemoteProtocol = async (web5, did) => {
     return await web5.dwn.protocols.query({
       from: did,
       message: {
         filter: {
-          protocol: protocolUrl,
+          protocol: "https://shege.xyz",
         },
       },
     });
@@ -87,19 +219,19 @@ const Dashboard = () => {
   
     const fundraiseProtocolDefinition = () => {
       return {
-        protocol: "https://shegefund.com/fundraise-protocol",
+        protocol: "https://shege.xyz",
         published: true,
         types: {
             personalCause: {
-                schema: "https://shegefund.com/personalCauseSchema",
+                schema: "https://shege.xyz/personalCauseSchema",
                 dataFormats: ["application/json"],
             },
             directCause: {
-              schema: "https://shegefund.com/directCauseSchema",
+              schema: "https://shege.xyz/directCauseSchema",
               dataFormats: ["application/json"],
           },
             donate: {
-                schema: "https://shegefund.com/donateSchema",
+                schema: "https://shege.xyz/donateSchema",
                 dataFormats: ["application/json"],
               },
         },
@@ -133,7 +265,7 @@ const Dashboard = () => {
     const protocolDefinition = fundraiseProtocolDefinition();
     const protocolUrl = protocolDefinition.protocol;
 
-    const { protocols: localProtocols, status: localProtocolStatus } = await queryLocalProtocol(web5, protocolUrl);
+    const { protocols: localProtocols, status: localProtocolStatus } = await queryLocalProtocol(web5);
     if (localProtocolStatus.code !== 200 || localProtocols.length === 0) {
       const result = await installLocalProtocol(web5, protocolDefinition);
       console.log({ result })
@@ -142,7 +274,7 @@ const Dashboard = () => {
       console.log(localProtocols, "Fundraise Protocol already installed locally");
       }
 
-    const { protocols: remoteProtocols, status: remoteProtocolStatus } = await queryRemoteProtocol(web5, did, protocolUrl);
+    const { protocols: remoteProtocols, status: remoteProtocolStatus } = await queryRemoteProtocol(web5, did);
     if (remoteProtocolStatus.code !== 200 || remoteProtocols.length === 0) {
       const result = await installRemoteProtocol(web5, did, protocolDefinition);
       console.log({ result })
@@ -157,7 +289,7 @@ const Dashboard = () => {
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
             
-          if ( name === 'target') {
+          if ( name === 'target' || name === 'amount') {
             // Use a regular expression to allow only phone numbers starting with a plus
             const phoneRegex = /^[+]?[0-9\b]+$/;
               
@@ -184,34 +316,14 @@ const Dashboard = () => {
             setDeadline(value);
         } else if (name === 'description') {
             setDescription(value);
+        } else if (name === 'amount') {
+          setAmount(value);
         }
       
       };
 
         // Create a mixed record and 
-  const writeSecretCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: File) => {
-    let base64Image = null;
-
-    if (image) {
-      const reader = new FileReader();
-      // Use a promise to handle the asynchronous read operation
-      const readImage = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        };
-        reader.onerror = reject;
-        // Read the image file as a Blob
-        reader.readAsDataURL(new Blob([image]));
-      });
-    
-      try {
-        const dataUrl = await readImage;
-        base64Image = dataUrl.split(',')[1];
-      } catch (error) {
-        console.error('Error reading image file:', error);
-        throw error;
-      }
-    }
+  const writeSecretCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: Blob) => {
 
     const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString();
@@ -225,7 +337,8 @@ const Dashboard = () => {
       target: target,
       description: description,
       deadline: deadline,
-      image: base64Image
+      image: image,
+      // published: true,
     };
 
     try {
@@ -252,36 +365,13 @@ const Dashboard = () => {
 };
 
 
-const writeDirectCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: File, recipientDid: string ) => {
-  let base64Image = null;
-
-  if (image) {
-    console.log(image)
-    const reader = new FileReader();
-    // Use a promise to handle the asynchronous read operation
-    const readImage = new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = reject;
-      // Read the image file as a Blob
-      reader.readAsDataURL(new Blob([image]));
-    });
-  
-    try {
-      const dataUrl = await readImage;
-      base64Image = dataUrl.split(',')[1];
-    } catch (error) {
-      console.error('Error reading image file:', error);
-      throw error;
-    }
-  }
-
-  console.log(base64Image);
+const writeDirectCauseToDwn = async (title: string, name: string, target: string, description: string, deadline: string, image: Blob, recipientDid: string,  ) => {
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
 
+
+console.log(recipientDid);
 
   const campaignData = {
     title: title,
@@ -292,8 +382,10 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
     type: 'public', 
     description: description,
     deadline: deadline,
-    image: base64Image,
-    recipientDid: recipientDid
+    // published: true,
+    image: image,
+    recipientDid: recipientDid,
+    amountRaised: amountRaised
   };
 
   try {
@@ -322,10 +414,9 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
   const handleCreateCause = async (e: FormEvent) => {
     e.preventDefault();
     console.log('Submitting message...');
-    setSubmitStatus('Submitting...');
     setLoading(true); 
 
-  const requiredFields = ['title', 'name', 'target', 'deadline', 'description', 'image'];
+  const requiredFields = ['title', 'name', 'target', 'deadline', 'description'];
   const emptyFields = requiredFields.filter((field) => ![field]);
 
   if (emptyFields.length > 0) {
@@ -351,27 +442,30 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       let record;
 
       if (campaignType === 'personal') {
-        record = await writeSecretCauseToDwn(title, name, target, description, deadline, image,);
-      } else {
-        record = await writeDirectCauseToDwn(title, name, target, description, deadline, image, targetDid);
+        record = await writeSecretCauseToDwn(title, name, target, description, deadline, imageBlob);
+      } else if (campaignType === 'public') {
+        record = await writeDirectCauseToDwn(title, name, target, description, deadline, imageBlob, targetDid);
       }
 
       if (record) {
+        console.log(targetDid);
         const { status } = await record.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
-        setSubmitStatus('Message submitted successfully');
-        await fetchCampaigns();
       } else {
         throw new Error('Failed to create record');
       }
     
+      fetchCampaigns(web5, myDid);
+
       setTitle("");
       setName("");
       setTarget("");
       setDeadline("");
       setDescription("");
-      setImage("");
+      setImageBlob(null);
       setRecipientDid("");
+
+      setCreatePopupOpen(false);
       
       toast.success('Cause created successfully.', {
         position: toast.POSITION.TOP_RIGHT,
@@ -382,68 +476,65 @@ const writeDirectCauseToDwn = async (title: string, name: string, target: string
       }
       catch (error) {
         console.error('Error in handleCreateCause', error);
-        setSubmitStatus('Error submitting message: ' + error.message);
         setLoading(false);
       }
   };
 
-  const fetchPersonalCampaigns = async (web5) => {
+  const fetchPersonalCampaigns = async (web5, did) => {
     console.log('Fetching personal campaigns...');
     try {
-    const { response } = await web5.dwn.records.query({
+    const response  = await web5.dwn.records.query({
       from: myDid,
       message: {
         filter: {
-          protocol: "https://shegefund.com/fundraise-protocol",
-          schema: "https://shegefund.com/personalCauseSchema",
+          protocol: "https://shege.xyz",
+          schema: "https://shege.xyz/personalCauseSchema",
         },
       },
     });
 
- 
-    console.log(response);
-    // console.log(response.status.code);
-    // if (response.status.code === 200) {
-      const personalCampaigns = await Promise.all(
-        response.map(async (record) => {
-          console.log(await record.data.json());
+    const personalCampaigns =  await Promise.all(
+        response.records.map(async (record) => {
+          console.log(record)
           const data = await record.data.json();
           console.log('Personal Campaigns:', data);
+          // return data;
           return {
             ...data, 
             recordId: record.id 
           };
         })
-      );
+    );
+      
       return personalCampaigns;
-    // } else {
-    //   console.error('Error fetching personal campaigns:', response.status);
-    //   return [];
-    // }
+    if (response.status.code === 200) {
+      
+    } else {
+      console.error('Error fetching personal campaigns:', response.status);
+    }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
   }
 };
 
 
-const fetchPublicCampaigns = async (web5) => {
+const fetchPublicCampaigns = async (web5, did) => {
   console.log('Fetching public campaigns...');
   try {
   const response = await web5.dwn.records.query({
     message: {
       filter: {
-        protocol: "https://shegefund.com/fundraise-protocol",
+        protocol: "https://shege.xyz",
+        schema: "https://shege.xyz/directCauseSchema",
       },
     },
   });
-  console.log(response);
-  console.log(response.status.code);
-  console.log(response.records);
   if (response?.status?.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
         console.log('Public Campaigns:', data);
+        // return data;
         return {
           ...data, 
           recordId: record.id 
@@ -453,28 +544,21 @@ const fetchPublicCampaigns = async (web5) => {
     return publicCampaigns;
   } else {
     console.error('Error fetching public campaigns:', response.status);
-    return [];
   } 
   } catch (error) {
     console.error('Error in fetchPublicCampaigns:', error);
   }
 };
 
-const fetchCampaigns = async () => {
+const fetchCampaigns = async (web5, myDid) => {
   setFetchLoading(true);
   console.log('Fetching campaigns...');
   try {
-    const personalCampaigns = await fetchPersonalCampaigns(web5);
-    const publicCampaigns = await fetchPublicCampaigns(web5);
+    const personalCampaigns = await fetchPersonalCampaigns(web5, myDid);
+    const publicCampaigns = await fetchPublicCampaigns(web5, myDid);
     
-    // const campaigns = [...personalCampaigns, ...publicCampaigns]; // Assign the merged campaigns to the 'campaigns' variable
-    
-    if (!Array.isArray(personalCampaigns) || !Array.isArray(publicCampaigns)) {
-      throw new Error('Invalid campaign data');
-    }
-    
-    const campaigns = [...personalCampaigns, ...publicCampaigns];
-    setCampaigns(campaigns);
+    const allCampaigns = [...(personalCampaigns || []), ...(publicCampaigns || [])]; 
+    setCampaigns(allCampaigns)
     console.log('Campaigns:', campaigns);
     setFetchLoading(false);
   } catch (error) {
@@ -566,6 +650,7 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
     amount: amount,
     timestamp: `${currentDate} ${currentTime}`,
     sender: myDid, 
+    recipientDid: recipientDid,
   };
 
   try {
@@ -576,7 +661,7 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
         protocol: fundraiseProtocol.protocol,
         protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
-        recipient: recipientDid,
+        recipient: donationData.recipientDid,
     },
   });
 
@@ -597,28 +682,28 @@ const handleDonation = async (e: FormEvent) => {
   setLoading(true); 
   console.log('Making a donation...');
 
-// Validate the form fields
-const requiredFields = ['name', 'amount'];
-const emptyFields = requiredFields.filter((field) => ![field]);
+  // Validate the form fields
+  const requiredFields = ['name', 'amount'];
+  const emptyFields = requiredFields.filter((field) => ![field]);
 
-if (emptyFields.length > 0) {
-    toast.error('Please fill in all required fields.', {
-    position: toast.POSITION.TOP_RIGHT,
-    autoClose: 3000, // Adjust the duration as needed
-    });
-    
-    requiredFields.forEach((field) => {
-    if (![field]) {
-        // Find the corresponding input element and add the error class
-        const inputElement = document.querySelector(`[name="${field}"]`);
-        if (inputElement) {
-        inputElement.parentElement?.classList.add('error-outline');
+    if (emptyFields.length > 0) {
+        toast.error('Please fill in all required fields.', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, // Adjust the duration as needed
+        });
+        
+        requiredFields.forEach((field) => {
+        if (![field]) {
+            // Find the corresponding input element and add the error class
+            const inputElement = document.querySelector(`[name="${field}"]`);
+            if (inputElement) {
+            inputElement.parentElement?.classList.add('error-outline');
+            }
         }
-    }
-    });
+        });
 
-    return; // Prevent form submission
-}
+        return; // Prevent form submission
+    }
 
 
     try {
@@ -627,7 +712,7 @@ if (emptyFields.length > 0) {
 
       if (record) {
         const { status } = await record.send(recipientDid);
-        console.log("Send record status in handleCreateCause", status);
+        console.log("Send record status in handleDonation", status);
         await fetchDonations();
       } else {
         throw new Error('Failed to create record');
@@ -635,6 +720,7 @@ if (emptyFields.length > 0) {
     
       setName("");
       setAmount("");
+      setRecipientDid("");
       
       setLoading(false);
       }
@@ -644,20 +730,28 @@ if (emptyFields.length > 0) {
       }
   };
 
+
   const fetchDonations = async () => {
+    setDonationLoading(true);
     console.log('Fetching donations from DWN')
     try {
     const response = await web5.dwn.records.query({
       message: {
         filter: {
-          protocol: "https://shegefund.com/donate-protocol",
+          protocol: "https://shege.xyz",
+          schema: "https://shege.xyz/donateSchema",
         },
       },
     });
 
+    console.log(response);
+    console.log(response.records);
+
     if (response.status.code === 200) {
       const donations = await Promise.all(
         response.records.map(async (record) => {
+          console.log(record);
+          console.log(await record.data.json())
           const data = await record.data.json();
           return {
             ...data, 
@@ -665,9 +759,13 @@ if (emptyFields.length > 0) {
           };
         })
       );
+      console.log(donations);
+      setDonations(donations);
+      setDonationLoading(false);
       return donations;
     } else {
       console.error('Error fetching donations:', response.status);
+      setDonationLoading(false);
       return [];
     }
   } catch (error) {
@@ -836,7 +934,7 @@ const deleteDonation = async (recordId) => {
                                         htmlFor="target"
                                         className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                       >
-                                        Target
+                                        Target (USD)
                                       </label>
                                       <div>
                                       <input
@@ -906,10 +1004,7 @@ const deleteDonation = async (recordId) => {
                                           type="file"
                                           accept="image/*"
                                           name="image"
-                                          onChange={(e) => {
-                                            const selectedImage = e.target.files?.[0];
-                                            setImage(selectedImage);
-                                          }}
+                                          onChange={handleImageInputChange}
                                           required
                                           className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                         />
@@ -1065,7 +1160,7 @@ const deleteDonation = async (recordId) => {
                                   htmlFor="title"
                                   className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                 >
-                                  Amount
+                                  Amount (USD)
                                 </label>
                                 <div>
                                 <input
@@ -1119,23 +1214,47 @@ const deleteDonation = async (recordId) => {
                   </p>
                 </div>
                 
-                <div className="">
+                    <div className="relative">
                       <button 
                         type="button"
-                        onClick={fetchCampaigns}                        
-                        disabled={fetchLoading}
+                        onClick={toggleFilterDropdown}
                         className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                         {fetchLoading ? (
-                          <div className="flex items-center">
-                            <div className="spinner"></div>
-                            <span className="pl-1">Fetching...</span>
+                         Filter                     
+                      </button>    
+                        {filterDropdownVisible && (
+                            <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
+                              <ul className="py-2">
+                                <li
+                                  onClick={() => handleFilter('personal')}
+                                  className={`cursor-pointer px-4 py-2 ${
+                                    filterOption === 'personal' ? 'bg-primary text-white' : ''
+                                  }`}
+                                >
+                                  Personal
+                                </li>
+                                <li
+                                  onClick={() => handleFilter('public')}
+                                  className={`cursor-pointer px-4 py-2 ${
+                                    filterOption === 'public' ? 'bg-primary text-white' : ''
+                                  }`}
+                                >
+                                  Public
+                                </li>
+                              
+                              
+                                <li
+                                  onClick={() => handleFilter('all')}
+                                  className={`cursor-pointer px-4 py-2 ${
+                                    filterOption === 'all' ? 'bg-primary text-white' : ''
+                                  }`}
+                              >
+                                All
+                              </li>
+                            </ul>
                           </div>
-                        ) : (
-                          <>Fetch Campaigns</>
-                        )}
-                      </button>
-                </div>
-                </div>
+                        )}               
+                      </div>
+                  </div>
                 
 
                 <div className="relative">
@@ -1144,49 +1263,333 @@ const deleteDonation = async (recordId) => {
                       {campaigns.map((campaign, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow-one dark:bg-[#242B51]"
+                          className="flex flex-col items-center px-4 py-3 bg-white rounded-lg shadow-one dark:bg-[#242B51]"
                         >
-                          <div className="flex items-center">
-                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xl">
-                              {campaign.name}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-black dark:text-white">
-                                {campaign.title}
+                          <div className="flex items-center p-3">
+                            <div className="flex flex-wrap w-full">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {/* <Image src={getImageFromBlob(imageBlob)} alt="Campaign Image" style={{ maxWidth: '100%' }} /> */}
+                              </div> 
+                            <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Name</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.name}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.target}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Title</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.title}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.deadline}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Target (USD)</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.target}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.description}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Deadline</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.deadline}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.timestamp}
+                              <div className="w-full mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Description</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.description}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.type}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Timestamp</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {campaign.timestamp}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.recipientDid}
+                              {campaign && campaign.recipientDid ? (
+                                <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Recipient</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {shortenDID(campaign.recipientDid, 15)}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.sender}
+                              ) : null
+                            }
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Sender</span>
+                                <h4 className="text-sm mt-1 text-black dark:text-white">
+                                  {shortenDID(campaign.sender, 15)}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {campaign.image}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Amount Raised (USD)</span>
+                                <h4 className="text-sm mt-1 text-black dark:text-white">
+                                  {campaign.amountRaised}
+                                </h4>
                               </div>
-                            </div>
+                              <div className="w-1/2 mb-5  text-gray-500 dark:text-gray-400">
+                                <h4 className={`text-sm mt-1 py-1 px-2 rounded-xl w-fit ${campaign.type === "personal" ? 'bg-success' : 'bg-warning'}  text-black dark:text-white`}>
+                                  {campaign.type}
+                                </h4>
+                              </div>                           
+                            </div>                           
                           </div>
-                          <div className="flex items-center">
-                            <button
-                              onClick={() => deleteCampaign(campaign.recordId)}
-                              className="text-sm font-medium text-red-500 dark:text-red-400"
-                            >
-                              Delete
-                            </button>
+                          <div className="flex flex-row w-80 justify-evenly">
+                            <div className="flex p-3 w-20 justify-center rounded-xl bg-success mb-5">
+                              <button
+                                onClick={() => togglePopup(campaign.recordId)}
+                                className="text-md  font-medium"
+                                >
+                                Edit
+                              </button>
+                              {popupOpenMap[campaign.recordId] && (
+                                <div
+                                  ref={popup}
+                                  className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+                                >
+                                  <div
+                                      className="lg:mt-15 lg:w-1/2 rounded-lg bg-primary/[100%] dark:bg-dark pt-3 px-4 shadow-md"
+                                      style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}
+                                    >      
+                                    <div
+                                      className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                                      data-wow-delay=".15s
+                                      ">        
+                                        <div className="flex flex-row justify-between ">
+                                          <h2 className="text-xl font-semibold mb-4">Edit Campaign</h2>
+                                          <div className="flex justify-end">
+                                            <button
+                                              onClick={() => closePopup(campaign.recordId)}
+                                              className="text-blue-500 hover:text-gray-700 focus:outline-none"
+                                            >
+                                              <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="white"
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth="2"
+                                                  d="M6 18L18 6M6 6l12 12"
+                                                />
+                                              </svg>
+                                            </button>
+                                          </div>  
+                                        </div>
+                                      <form>
+                                    <div className="-mx-4 flex flex-wrap">
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="title"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Title
+                                          </label>
+                                          <div>
+                                          <input
+                                            type="text"
+                                            name="title"
+                                            value={title}
+                                            onChange={handleInputChange}
+                                            placeholder="5 shegs/week for 1 year"
+                                            required
+                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                          />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="name"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Your Name
+                                          </label>
+                                          <div>
+                                          <input
+                                            type="text"
+                                            name="name"
+                                            value={name}
+                                            onChange={handleInputChange}
+                                            required
+                                            placeholder="Festus Idowu"
+                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                          />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="target"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Target (USD)
+                                          </label>
+                                          <div>
+                                          <input
+                                            type="text"
+                                              name="target"
+                                              value={target}
+                                              onChange={handleInputChange}
+                                              required
+                                            placeholder="100 USD"
+                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                          />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="deadline"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Deadline
+                                          </label>
+                                          <div>
+                                          <input
+                                            type="date"
+                                              name="deadline"
+                                              value={deadline}
+                                              onChange={handleInputChange}
+                                              required
+                                            placeholder="31-01-2024"
+                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                          />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="description"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Your Shege Story
+                                          </label>
+                                          <div>
+                                          <textarea
+                                            name="description"
+                                            rows={4}
+                                              value={description}
+                                              onChange={handleInputChange}
+                                              required
+                                            placeholder="Describe your shege story"
+                                            className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                          ></textarea>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="image"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Cover Image
+                                          </label>
+                                          <div>
+                                          <input
+                                              type="file"
+                                              accept="image/*"
+                                              name="image"
+                                              onChange={handleImageInputChange}
+                                              required
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4 md:w-1/2">
+                                        <div className="mb-8">
+                                          <label
+                                            htmlFor="image"
+                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                          >
+                                            Campaign Type
+                                          </label>
+                                          <div>
+                                          <select
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                              value={campaignType}
+                                              onChange={(e) => setCampaignType(e.target.value)}
+                                            >
+                                              <option value="personal">Personal</option>
+                                              <option value="public">Public</option>
+                                            </select>
+                                              {campaignType === 'public' && (
+                                              <input
+                                                className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                type="text"
+                                                value={recipientDid}
+                                                onChange={e => setRecipientDid(e.target.value)}
+                                                placeholder="Enter recipient's DID"
+                                              />
+                                              )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="w-full px-4">
+                                        <button 
+                                          type="button"
+                                          onClick={() => updateCampaign(campaign.recordId, title)}
+                                          disabled={loading}
+                                          className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                          {loading ? (
+                                            <div className="flex items-center">
+                                              <div className="spinner"></div>
+                                              <span className="pl-1">Updating...</span>
+                                            </div>
+                                          ) : (
+                                            <>Update</>
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+                                      </form>
+                                      </div>
+                                    </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                              <button
+                                onClick={() => showDeleteConfirmation(campaign.recordId)}
+                                className="text-md font-medium"
+                                >
+                                Delete
+                              </button>
+                              {isDeleteConfirmationVisible && (
+                                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                                  <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
+                                    <p>Are you sure you want to delete this campaign?</p>
+                                    <div className="mt-4 flex justify-end">
+                                      <button
+                                        onClick={hideDeleteConfirmation}
+                                        className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          hideDeleteConfirmation();
+                                          deleteCampaign(campaign.recordId);
+                                        }}
+                                        className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
+                                      >
+                                        Confirm
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1217,9 +1620,9 @@ const deleteDonation = async (recordId) => {
                         <button 
                           type="button"
                           onClick={fetchDonations}                        
-                          disabled={loading}
+                          disabled={donationLoading}
                           className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                          {loading ? (
+                          {donationLoading ? (
                             <div className="flex items-center">
                               <div className="spinner"></div>
                               <span className="pl-1">Fetching...</span>
@@ -1237,34 +1640,76 @@ const deleteDonation = async (recordId) => {
                       {donations.map((donation, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow-one dark:bg-[#242B51]"
+                          className="flex flex-col items-center px-4 py-3 bg-white rounded-lg shadow-one dark:bg-[#242B51]"
                         >
-                          <div className="flex items-center">
-                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xl">
-                              {donation.name}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-black dark:text-white">
-                                {donation.amount}
+                          <div className="flex items-center p-3"> 
+                            <div className="flex flex-wrap w-full">
+                            <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Name</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {donation.name}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {donation.timestamp}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Amount (USD)</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {donation.amount}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {donation.recipientDid}
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Sender</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {shortenDID(donation.sender, 15)}
+                                </h4>
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {donation.sender}
+                                {donation && donation.recipientDid ? (
+                                  <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                  <span className="text-md">Recipient</span>
+                                  <h4 className="text-sm mt-1  text-black dark:text-white">
+                                    {shortenDID(donation.recipientDid, 15)}
+                                  </h4>
+                                </div>
+                                ) : null
+                              }
+                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                                <span className="text-md">Timestamp</span>
+                                <h4 className="text-sm mt-1  text-black dark:text-white">
+                                  {donation.timestamp}
+                                </h4>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center">
+                          <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
                             <button
-                              onClick={() => deleteDonation(donation.recordId)}
-                              className="text-sm font-medium text-red-500 dark:text-red-400"
+                              onClick={() => showDeleteConfirmation(donation.recordId)}
+                              className="text-md font-medium"
                             >
                               Delete
                             </button>
+                            {isDeleteConfirmationVisible && (
+                                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                                  <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
+                                    <p>Are you sure you want to delete this donation record?</p>
+                                    <div className="mt-4 flex justify-end">
+                                      <button
+                                        onClick={hideDeleteConfirmation}
+                                        className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          hideDeleteConfirmation();
+                                          deleteDonation(donation.recordId);
+                                        }}
+                                        className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
+                                      >
+                                        Confirm
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                           </div>
                         </div>
                       ))}

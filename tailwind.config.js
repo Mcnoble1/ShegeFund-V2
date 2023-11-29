@@ -19,6 +19,9 @@ module.exports = {
       dark: "#1D2144",
       primary: "#4A6CF7",
       yellow: "#FBB040",
+      success: "#2DD4BF",
+      warning: "#FFB822",
+      danger: "#FF5B5B",
       "body-color": "#959CB1",
     },
     screens: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useWeb5 from '../../hooks/useWeb5';  
 import Link from "next/link";
 import ThemeToggler from "./ThemeToggler";
@@ -6,7 +6,15 @@ import ThemeToggler from "./ThemeToggler";
 
 const Header = () => {
 
-  const { web5, myDid } = useWeb5();
+  const [loading, setLoading] = useState<boolean>(false);
+  const [generateLoading, setGenerateLoading] = useState<boolean>(false);
+  const [donatePopupOpen, setDonatePopupOpen] = useState(false);
+  const [existingDid, setExistingDid] = useState("");
+  const [identityAgent, setIdentityAgent] = useState("")
+  const [connect, setConnect] = useState('Connect')
+
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const popup = useRef<HTMLDivElement | null>(null);
 
   // Navbar toggle
   const [navbarOpen, setNavbarOpen] = useState(false);
@@ -14,6 +22,13 @@ const Header = () => {
     setNavbarOpen(!navbarOpen);
   };
 
+  useEffect(() => {
+    if (donatePopupOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+  }, [donatePopupOpen]);
   // Sticky Navbar
   const [sticky, setSticky] = useState(false);
   const handleStickyNavbar = () => {
@@ -37,6 +52,23 @@ const shortenDID = (did, length) => {
     const end = '...';
     return start + end;
   }
+}
+
+const handleConnect = async () => {
+  // const {web5, did} = await Web5.connect({
+  //   agent: identityAgent,
+  //   connectedDid: existingDid
+  // });
+
+  // shortenDID(did, 15)
+}
+
+const { web5, myDid } = useWeb5();
+
+const handleGenerate = async () => {
+  const newDid = shortenDID(myDid, 15)
+  setConnect(newDid)
+  setDonatePopupOpen(false);
 }
 
 
@@ -99,10 +131,131 @@ const shortenDID = (did, length) => {
               </div>
               <div className="flex items-center justify-end pr-16 lg:pr-0">
                 <button
+                ref={trigger}
+                onClick={() => setDonatePopupOpen(!donatePopupOpen)}
                   className="ease-in-up hidden rounded-md bg-primary py-3 px-8 text-base font-bold text-white transition duration-300 hover:bg-opacity-90 hover:shadow-signUp md:block md:px-9 lg:px-6 xl:px-9"
                 >
-                 {myDid ? shortenDID(myDid, 15) : 'Connect'}
+                 {connect}
                 </button>
+
+                {donatePopupOpen && (
+                  <div
+                    ref={popup}
+                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+                  >
+                    <div
+                      className="lg:mt-15 lg:w-1/2 rounded-lg shadow-md"
+                      style={{ maxHeight: 'calc(100vh - 200px)' }}
+                    >              
+                            <div
+                              className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                              data-wow-delay=".15s
+                              "
+                            >
+                              <div className="flex justify-between">
+                                <div>
+                                  <h2 className="mb-3 text-2xl font-bold text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
+                                    Already have a DID? Use it.
+                                  </h2>
+                                  <p className="mb-12 text-base font-medium text-body-color">
+                                    If not, we will generate your unique DID.
+                                  </p>
+                                </div>
+                                
+                                <div className="">
+                              <button
+                                onClick={() => setDonatePopupOpen(false)} 
+                                className="text-blue-500 hover:text-gray-700 focus:outline-none"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="white"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          <form>
+                          <div className="-mx-4 flex flex-wrap">
+                          <div className="w-full px-4 ">
+                              <div className="mb-8">
+                                <label
+                                  htmlFor="name"
+                                  className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                >
+                                  Your DID
+                                </label>
+                                <div>
+                                <input
+                                      className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                      type="text"
+                                      value={existingDid}
+                                      onChange={e => setExistingDid(e.target.value)}
+                                      placeholder="Enter your DID"
+                                    />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="w-full px-4 ">
+                              <div className="mb-8">
+                                <label
+                                  htmlFor="name"
+                                  className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                >
+                                  Your Identity Agent
+                                </label>
+                                <div>
+                                <input
+                                      className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                      type="text"
+                                      value={existingDid}
+                                      onChange={e => setIdentityAgent(e.target.value)}
+                                      placeholder="Enter your DID"
+                                    />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="w-full px-4 flex justify-between">
+                              <button 
+                                type="button"
+                                onClick={handleConnect}
+                                disabled={loading}
+                                className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                {loading ? (
+                                  <div className="flex items-center">
+                                    <div className="spinner"></div>
+                                    <span className="pl-1">Connecting...</span>
+                                  </div>
+                                ) : (
+                                  <>Connect</>
+                                )}
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={handleGenerate}
+                                disabled={loading}
+                                className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                {generateLoading ? (
+                                  <div className="flex items-center">
+                                    <div className="spinner"></div>
+                                    <span className="pl-1">Generating...</span>
+                                  </div>
+                                ) : (
+                                  <>Generate DID</>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          </form>
+                            </div>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <ThemeToggler />
                 </div>
