@@ -1,13 +1,20 @@
-import React, { useEffect, useRef, useState, ChangeEvent, FormEvent } from "react";
-import useWeb5 from '../../hooks/useWeb5';  // Adjust the path based on your project structure
+import React, { useEffect, useRef, useState, ChangeEvent, FormEvent, useCallback } from "react";
+// import useWeb5 from '../../hooks/useWeb5'; 
 // import { useNavigate } from 'react-router-dom'; 
 import Image from 'next/image';
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
+import { webcrypto } from 'node:crypto';
+// @ts-ignore
+
+// @ts-ignore
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
 const Dashboard = () => {
 
+  const [web5, setWeb5] = useState(null);
+  const [myDid, setMyDid] = useState(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [donationLoading, setDonationLoading] = useState(false)
   const [fetchLoading, setFetchLoading] = useState<boolean>(false);
@@ -36,18 +43,45 @@ const Dashboard = () => {
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
 
-    const { web5, myDid } = useWeb5();
+    // const { web5, myDid } = useWeb5();
 
-    useEffect(() => {
-      const configure = async () => {
-      if (web5 && myDid) {
-        await configureProtocol(web5, myDid);
-        await fetchCampaigns(web5, myDid);
-        await fetchDonations();
+  //   useEffect(() => {
+  //     const configure = async () => {
+  //     if (web5 && myDid) {
+  //       await configureProtocol(web5, myDid);
+  //       await fetchCampaigns(web5, myDid);
+  //       await fetchDonations();
+  //     }
+  //   };
+  //   configure();
+  // }, []);
+
+  useEffect(() => {
+
+    const initWeb5 = async () => {
+      // @ts-ignore
+      const { Web5 } = await import('@web5/api/browser');
+      
+      try {
+        const { web5, did } = await Web5.connect({sync: '5s'});
+        setWeb5(web5);
+        setMyDid(did);
+        console.log(web5);
+        if (web5 && did) {
+          console.log('Web5 initialized');
+          await configureProtocol(web5, myDid);
+          await fetchCampaigns(web5, myDid);
+          await fetchDonations();
+        }
+      } catch (error) {
+        console.error('Error initializing Web5:', error);
       }
     };
-    configure();
-  }, [myDid, web5]);
+
+    initWeb5();
+ 
+}, []);
+
 
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
 
@@ -732,7 +766,7 @@ const handleDonation = async (e: FormEvent) => {
 
 
   const fetchDonations = async () => {
-    setDonationLoading(true);
+    // setDonationLoading(true);
     console.log('Fetching donations from DWN')
     try {
     const response = await web5.dwn.records.query({

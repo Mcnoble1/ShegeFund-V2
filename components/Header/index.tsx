@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import useWeb5 from '../../hooks/useWeb5';  
+// import useWeb5 from '../../hooks/useWeb5';  
 import Link from "next/link";
 import ThemeToggler from "./ThemeToggler";
 
@@ -63,12 +63,12 @@ const handleConnect = async () => {
   // shortenDID(did, 15)
 }
 
-const { web5, myDid } = useWeb5();
+// const { web5, myDid } = useWeb5();
 
 const handleGenerate = async () => {
-  const newDid = shortenDID(myDid, 15)
-  setConnect(newDid)
-  setDonatePopupOpen(false);
+  // const newDid = shortenDID(myDid, 15)
+  // setConnect(newDid)
+  // setDonatePopupOpen(false);
 }
 
 
