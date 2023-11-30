@@ -64,10 +64,10 @@ const Dashboard = () => {
       
       try {
         const { web5, did } = await Web5.connect({
-          techPreview: {
-            dwnEndpoints: ["http://localhost:3000"]
-          },
-          // sync: '5s',
+          // techPreview: {
+          //   dwnEndpoints: ["http://localhost:3000"]
+          // },
+          sync: '5s',
         });
         setWeb5(web5);
         setMyDid(did);

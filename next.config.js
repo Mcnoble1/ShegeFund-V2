@@ -2,6 +2,8 @@ const webpack = require('webpack');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  swcMinify: false,
+  
   experimental: {
     appDir: true,
   },
