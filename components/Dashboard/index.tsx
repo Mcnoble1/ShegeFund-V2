@@ -219,7 +219,7 @@ const Dashboard = () => {
     }
   }
 
-  const queryLocalProtocol = async (web5) => {
+  const queryLocalProtocol = async (web5, url) => {
     return await web5.dwn.protocols.query({
       message: {
         filter: {
@@ -230,7 +230,7 @@ const Dashboard = () => {
   };
 
 
-  const queryRemoteProtocol = async (web5, did) => {
+  const queryRemoteProtocol = async (web5, did, url) => {
     return await web5.dwn.protocols.query({
       from: did,
       message: {
@@ -564,7 +564,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
         type: 'Public', 
         description: description,
         deadline: deadline,
-        // image: image,
         recipientDid: recipientDid,
         amountRaised: amountRaised
       };
