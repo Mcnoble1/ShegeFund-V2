@@ -91,9 +91,9 @@ const Dashboard = () => {
  
 }, []);
 
-
-
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
+  
+  let campaignWalletAmount = 0; 
 
   useEffect(() => {
     if (donatePopupOpen || createPopupOpen) {
@@ -730,16 +730,31 @@ const updateCampaign = async (recordId, data) => {
       const updateResult = await record.update(data);
 
       if (updateResult.status.code === 202) {
-        console.log('Campaign updated successfully');
+        toast.success('Campaign updated successfully.', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
         setCampaigns(prevCampaigns => prevCampaigns.map(message => message.recordId === recordId ? { ...message, ...data } : message));
       } else {
         console.error('Error updating message:', updateResult.status);
+        toast.error('Error updating campaign', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
       }
     } else {
       console.error('No record found with the specified ID');
+      toast.error('No record found with the specified ID', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
     }
   } catch (error) {
     console.error('Error in updateCampaign:', error);
+    toast.error('Error in updateCampaign:', {
+      position: toast.POSITION.TOP_RIGHT,
+      autoClose: 3000, 
+    });
   }
 };
 
@@ -772,11 +787,16 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
   if (status.code === 200) {
     return { ...donationData, recordId: record.id };
   }
-
-  console.log("Donation Data written to DWN", { record, status });
+  toast.success('Donation Data written to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000,
+  });
     return record;
 } catch (error) {
-  console.error('Error writing donation data to DWN', error);
+  toast.error('Error writing donation data to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000, 
+  });
 }
 };
 
@@ -817,27 +837,35 @@ const handleDonation = async (e: FormEvent) => {
       if (record) {
         const { status } = await record.send(recipientDid);
         console.log("Send record status in handleDonation", status);
-        await fetchDonations();
+        toast.success('Donation record sent', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+        fetchDonations();
       } else {
         throw new Error('Failed to create record');
       }
     
       setName("");
       setAmount("");
-      setRecipientDid("");
-      
       setLoading(false);
+
+      setDonatePopupOpen(false);
+
       }
       catch (error) {
         console.error('Error in handleDonation', error);
+        toast.error(`Error in handleDonation, ${error}`, {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+          });
         setLoading(false);
       }
   };
 
 
   const fetchDonations = async () => {
-    // setDonationLoading(true);
-    console.log('Fetching donations from DWN')
+    setDonationLoading(true);
     try {
     const response = await web5.dwn.records.query({
       message: {
@@ -848,14 +876,9 @@ const handleDonation = async (e: FormEvent) => {
       },
     });
 
-    console.log(response);
-    console.log(response.records);
-
     if (response.status.code === 200) {
       const donations = await Promise.all(
         response.records.map(async (record) => {
-          console.log(record);
-          console.log(await record.data.json())
           const data = await record.data.json();
           return {
             ...data, 
@@ -863,12 +886,19 @@ const handleDonation = async (e: FormEvent) => {
           };
         })
       );
-      console.log(donations);
       setDonations(donations);
+      toast.success('Donations fetched successfully.', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
       setDonationLoading(false);
       return donations;
     } else {
       console.error('Error fetching donations:', response.status);
+      toast.error('Error fetching donations:', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
       setDonationLoading(false);
       return [];
     }
@@ -893,9 +923,17 @@ const deleteDonation = async (recordId) => {
 
       if (deleteResult.status.code === 202) {
         console.log('Donation deleted successfully');
+        toast.success('Donation deleted successfully', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
         setDonations(prevDonations => prevDonations.filter(message => message.recordId !== recordId));
       } else {
         console.error('Error deleting message:', deleteResult.status);
+        toast.error('Error deleting donation:', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
       }
     } else {
       console.error('No record found with the specified ID');
@@ -1171,57 +1209,65 @@ const deleteDonation = async (recordId) => {
             <div className="w-full px-4 lg:w-5/12 xl:w-6/12">
           
               <div className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]" data-wow-delay=".15s">
-                <div className="flex flex-row justify-between">
-                <div>
-                  <h2 className="mb-3 text-2xl text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
-                    Your Campaigns
-                  </h2>
-                  <p className="mb-12 text-base font-medium text-body-color">
-                    Manage your campaigns.
-                  </p>
-                </div>
-                
-                    <div className="relative">
-                      <button 
-                        type="button"
-                        onClick={toggleFilterDropdown}
-                        className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                         Filter                     
-                      </button>    
-                        {filterDropdownVisible && (
-                            <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
-                              <ul className="py-2">
-                                <li
-                                  onClick={() => handleFilter('Personal')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'Personal' ? 'bg-primary text-white' : ''
-                                  }`}
-                                >
-                                  Personal
-                                </li>
-                                <li
-                                  onClick={() => handleFilter('Public')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'Public' ? 'bg-primary text-white' : ''
-                                  }`}
-                                >
-                                  Public
-                                </li>
-                              
-                              
-                                <li
-                                  onClick={() => handleFilter('All')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'All' ? 'bg-primary text-white' : ''
-                                  }`}
-                              >
-                                All
-                              </li>
-                            </ul>
-                          </div>
-                        )}               
-                      </div>
+                <div className="flex flex-row flex-wra justify-between">
+                  <div>
+                    <h2 className="mb-3 text-black dark:text-white lg:text-2xl xl:text-3xl">
+                      Your Campaigns
+                    </h2>
+                    <p className="mb-12 text-base font-medium text-body-color">
+                      Manage your campaigns.
+                    </p>
                   </div>
+                
+                  <div className="mr-2 ">
+                    <button 
+                      type="button"
+                      onClick={toggleFilterDropdown}
+                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                        Filter                     
+                    </button>    
+                      {filterDropdownVisible && (
+                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
+                            <ul className="py-2">
+                              <li
+                                onClick={() => handleFilter('Personal')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'Personal' ? 'bg-primary text-white' : ''
+                                }`}
+                              >
+                                Personal
+                              </li>
+                              <li
+                                onClick={() => handleFilter('Public')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'Public' ? 'bg-primary text-white' : ''
+                                }`}
+                              >
+                                Public
+                              </li>
+                            
+                            
+                              <li
+                                onClick={() => handleFilter('All')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'All' ? 'bg-primary text-white' : ''
+                                }`}
+                            >
+                              All
+                            </li>
+                          </ul>
+                        </div>
+                      )}               
+                  </div>
+                  <div className="">
+                    <button 
+                      type="button"
+                      onClick={fetchCampaigns}
+                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                        Refresh                     
+                    </button>                 
+                  </div>
+                </div>
                 
 
                 <div className="relative">
@@ -1302,7 +1348,7 @@ const deleteDonation = async (recordId) => {
                             </div>                           
                           </div>
                           <div className="flex flex-row w-80 justify-evenly">
-                            {campaign.sender === myDid && (
+                            {campaign.sender === myDid && campaign.type === "Personal" && (
                               <div className="flex p-3 w-20 justify-center rounded-xl bg-success mb-5">
                                 <button
                                   onClick={() => togglePopup(campaign.recordId)}
@@ -1591,9 +1637,6 @@ const deleteDonation = async (recordId) => {
                                                 <h2 className="mb-3 text-2xl font-bold text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
                                                   Make a Donation
                                                 </h2>
-                                                <p className="mb-12 text-base font-medium text-body-color">
-                                                  Donate to a cause.
-                                                </p>
                                               </div>
                                               
                                               <div className="">
@@ -1628,8 +1671,8 @@ const deleteDonation = async (recordId) => {
                                               <input
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
-                                                    value={recipientDid}
-                                                    onChange={e => setRecipientDid(e.target.value)}
+                                                    value={campaign.sender}
+                                                    readOnly
                                                     placeholder="Enter recipient's DID"
                                                   />
                                               </div>
@@ -1790,6 +1833,7 @@ const deleteDonation = async (recordId) => {
                               </div>
                             </div>
                           </div>
+                          {donation.sender === myDid && (
                           <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
                             <button
                               onClick={() => showDeleteConfirmation(donation.recordId)}
@@ -1822,6 +1866,7 @@ const deleteDonation = async (recordId) => {
                                 </div>
                               )}
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>
