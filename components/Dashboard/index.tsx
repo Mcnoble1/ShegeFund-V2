@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, ChangeEvent, FormEvent, useCallback } from "react";
 // import useWeb5 from '../../hooks/useWeb5'; 
 // import { useNavigate } from 'react-router-dom'; 
-import Image from 'next/image';
+import ImageComponent from '../ImageComponent';
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
@@ -64,10 +64,10 @@ const Dashboard = () => {
       
       try {
         const { web5, did } = await Web5.connect({
-          techPreview: {
-            dwnEndpoints: ["http://localhost:3000"]
-          },
-          // sync: '5s',
+          // techPreview: {
+          //   dwnEndpoints: ["http://localhost:3000"]
+          // },
+          sync: '5s',
         });
         setWeb5(web5);
         setMyDid(did);
@@ -91,8 +91,9 @@ const Dashboard = () => {
  
 }, []);
 
-
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
+  
+  let campaignWalletAmount = 0; 
 
   useEffect(() => {
     if (donatePopupOpen || createPopupOpen) {
@@ -181,33 +182,7 @@ const Dashboard = () => {
     }
   };
 
-
-//   const getImageFromBlob = (blob) => {
-//     return new Promise((resolve, reject) => {
-//         const reader = new FileReader();
-
-//         reader.onload = function (e) {
-//             const imageDataUrl = e.target.result;
-//             const image = new Image();
-
-//             // Set the source of the image to the data URL
-//             image.src = imageDataUrl;
-
-//             // Set up the onload event for the image to ensure it's fully loaded before resolving the Promise
-//             image.onload = function () {
-//                 resolve(image);
-//             };
-
-//             // Set up the onerror event for the image in case there's an issue loading it
-//             image.onerror = function () {
-//                 reject(new Error('Error loading image.'));
-//             };
-//         };
-
-//         // Read the Blob as a data URL
-//         reader.readAsDataURL(blob);
-//     });
-// }
+  
 
   const shortenDID = (did, length) => {
     if (did.length <= length) {
@@ -272,7 +247,11 @@ const Dashboard = () => {
             directCause: {
               schema: "https://shege.xyz/directCauseSchema",
               dataFormats: ["application/json"],
-          },
+            },
+            image: {
+              schema: "https://shege.xyz/imageSchema",
+              dataFormats: ['image/jpg', 'image/png', 'image/jpeg', 'image/gif']
+            },
             donate: {
                 schema: "https://shege.xyz/donateSchema",
                 dataFormats: ["application/json"],
@@ -284,6 +263,7 @@ const Dashboard = () => {
                     { who: "anyone", can: "write"},
                     { who: "author", of: "personalCause", can: "read" },
                 ],
+                image: {},
             },
             directCause: {
               $actions: [
@@ -294,7 +274,7 @@ const Dashboard = () => {
             },
             donate: {
               $actions: [ 
-                  {who: "anyone", can: "write"},
+                  {who: "recipient", of: "directCause", can: "write"},
                   { who: "author", of: "donate", can: "read" },
                   { who: "recipient", of: "donate", can: "read" },
               ],
@@ -377,7 +357,7 @@ const Dashboard = () => {
       
     //   };
 
-        // Create a mixed record and 
+    // Create a mixed record and 
   const writeSecretCauseToDwn = async (campaignData) => {
 
     try {
@@ -564,6 +544,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
         type: 'Public', 
         description: description,
         deadline: deadline,
+        // image: imageBlob,
         recipientDid: recipientDid,
         amountRaised: amountRaised
       };
@@ -582,7 +563,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
       target: target,
       description: description,
       deadline: deadline,
-      // image: image,
+      // image: imageBlob,
     };
   };
 
@@ -624,7 +605,7 @@ const fetchPublicCampaigns = async () => {
     message: {
       filter: {
         protocol: "https://shege.xyz",
-        // schema: "https://shege.xyz/directCauseSchema",
+        schema: "https://shege.xyz/directCauseSchema",
       },
     },
   });
@@ -731,6 +712,8 @@ const deleteCampaign = async (recordId) => {
   }
 };
     
+// deleteCampaign("bafyreifwy2paiazibhaxcax25k5vu773kkxzdbvd6p5aqmvqhr2mb6ytau");
+// deleteCampaign("bafyreibljz4ifabybssxsqfqk7c6t4tiazmhm546kdapnqo2qxsaytcv3i");
 
 const updateCampaign = async (recordId, data) => {
   try {
@@ -747,16 +730,31 @@ const updateCampaign = async (recordId, data) => {
       const updateResult = await record.update(data);
 
       if (updateResult.status.code === 202) {
-        console.log('Campaign updated successfully');
+        toast.success('Campaign updated successfully.', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
         setCampaigns(prevCampaigns => prevCampaigns.map(message => message.recordId === recordId ? { ...message, ...data } : message));
       } else {
         console.error('Error updating message:', updateResult.status);
+        toast.error('Error updating campaign', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
       }
     } else {
       console.error('No record found with the specified ID');
+      toast.error('No record found with the specified ID', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
     }
   } catch (error) {
     console.error('Error in updateCampaign:', error);
+    toast.error('Error in updateCampaign:', {
+      position: toast.POSITION.TOP_RIGHT,
+      autoClose: 3000, 
+    });
   }
 };
 
@@ -789,11 +787,16 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
   if (status.code === 200) {
     return { ...donationData, recordId: record.id };
   }
-
-  console.log("Donation Data written to DWN", { record, status });
+  toast.success('Donation Data written to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000,
+  });
     return record;
 } catch (error) {
-  console.error('Error writing donation data to DWN', error);
+  toast.error('Error writing donation data to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000, 
+  });
 }
 };
 
@@ -834,27 +837,34 @@ const handleDonation = async (e: FormEvent) => {
       if (record) {
         const { status } = await record.send(recipientDid);
         console.log("Send record status in handleDonation", status);
-        await fetchDonations();
+        toast.success('Donation record sent', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+        fetchDonations();
       } else {
         throw new Error('Failed to create record');
       }
     
       setName("");
       setAmount("");
-      setRecipientDid("");
-      
       setLoading(false);
+
+      setDonatePopupOpen(false);
+
       }
       catch (error) {
         console.error('Error in handleDonation', error);
+        toast.error(`Error in handleDonation, ${error}`, {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+          });
         setLoading(false);
       }
   };
 
 
   const fetchDonations = async () => {
-    // setDonationLoading(true);
-    console.log('Fetching donations from DWN')
     try {
     const response = await web5.dwn.records.query({
       message: {
@@ -865,14 +875,9 @@ const handleDonation = async (e: FormEvent) => {
       },
     });
 
-    console.log(response);
-    console.log(response.records);
-
     if (response.status.code === 200) {
       const donations = await Promise.all(
         response.records.map(async (record) => {
-          console.log(record);
-          console.log(await record.data.json())
           const data = await record.data.json();
           return {
             ...data, 
@@ -880,12 +885,19 @@ const handleDonation = async (e: FormEvent) => {
           };
         })
       );
-      console.log(donations);
       setDonations(donations);
+      toast.success('Donations fetched successfully.', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
       setDonationLoading(false);
       return donations;
     } else {
       console.error('Error fetching donations:', response.status);
+      toast.error('Error fetching donations:', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
       setDonationLoading(false);
       return [];
     }
@@ -910,9 +922,17 @@ const deleteDonation = async (recordId) => {
 
       if (deleteResult.status.code === 202) {
         console.log('Donation deleted successfully');
+        toast.success('Donation deleted successfully', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
         setDonations(prevDonations => prevDonations.filter(message => message.recordId !== recordId));
       } else {
         console.error('Error deleting message:', deleteResult.status);
+        toast.error('Error deleting donation:', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
       }
     } else {
       console.error('No record found with the specified ID');
@@ -1182,200 +1202,71 @@ const deleteDonation = async (recordId) => {
                             </div>
                     </div>
                   </div>
-                )}
-                
-              <button
-                 ref={trigger}
-                 onClick={() => setDonatePopupOpen(!donatePopupOpen)}
-                className="wow fadeInUp mb-12 text-2xl rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]">
-                  Make Donation
-              </button>
-
-              {donatePopupOpen && (
-                  <div
-                    ref={popup}
-                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
-                  >
-                    <div
-                      className="lg:mt-15 lg:w-1/2 rounded-lg shadow-md"
-                      style={{ maxHeight: 'calc(100vh - 200px)' }}
-                    >              
-                            <div
-                              className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
-                              data-wow-delay=".15s
-                              "
-                            >
-                              <div className="flex justify-between">
-                                <div>
-                                  <h2 className="mb-3 text-2xl font-bold text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
-                                    Make a Donation
-                                  </h2>
-                                  <p className="mb-12 text-base font-medium text-body-color">
-                                    Donate to a cause.
-                                  </p>
-                                </div>
-                                
-                                <div className="">
-                              <button
-                                onClick={() => setDonatePopupOpen(false)} 
-                                className="text-blue-500 hover:text-gray-700 focus:outline-none"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="white"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-
-                          <form>
-                          <div className="-mx-4 flex flex-wrap">
-                          <div className="w-full px-4 ">
-                              <div className="mb-8">
-                                <label
-                                  htmlFor="name"
-                                  className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                >
-                                  Recipient DID
-                                </label>
-                                <div>
-                                <input
-                                      className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                      type="text"
-                                      value={recipientDid}
-                                      onChange={e => setRecipientDid(e.target.value)}
-                                      placeholder="Enter recipient's DID"
-                                    />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="w-full px-4 md:w-1/2">
-                              <div className="mb-8">
-                                <label
-                                  htmlFor="name"
-                                  className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                >
-                                  Your Name
-                                </label>
-                                <div>
-                                <input
-                                  type="text"
-                                  name="name"
-                                  value={name}
-                                  onChange={(e) => setName(e.target.value)}
-                                  required
-                                  placeholder="Festus Idowu"
-                                  className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="w-full px-4 md:w-1/2">
-                              <div className="mb-8">
-                                <label
-                                  htmlFor="title"
-                                  className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                >
-                                  Amount (USD)
-                                </label>
-                                <div>
-                                <input
-                                  type="text"
-                                  name="amount"
-                                  value={amount}
-                                  onChange={(e) => setAmount(e.target.value)}
-                                  placeholder="100"
-                                  required
-                                  className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="w-full px-4">
-                              <button 
-                                type="button"
-                                onClick={handleDonation}
-                                disabled={loading}
-                                className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                                {loading ? (
-                                  <div className="flex items-center">
-                                    <div className="spinner"></div>
-                                    <span className="pl-1">Donating...</span>
-                                  </div>
-                                ) : (
-                                  <>Donate</>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                          </form>
-                            </div>
-                    </div>
-                  </div>
-                )}
-                             
-                              
+                )}                          
             </div>
 
             <div className="w-full px-4 lg:w-5/12 xl:w-6/12">
           
               <div className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]" data-wow-delay=".15s">
-                <div className="flex flex-row justify-between">
-                <div>
-                  <h2 className="mb-3 text-2xl text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
-                    Your Campaigns
-                  </h2>
-                  <p className="mb-12 text-base font-medium text-body-color">
-                    Manage your campaigns.
-                  </p>
-                </div>
-                
-                    <div className="relative">
-                      <button 
-                        type="button"
-                        onClick={toggleFilterDropdown}
-                        className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                         Filter                     
-                      </button>    
-                        {filterDropdownVisible && (
-                            <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
-                              <ul className="py-2">
-                                <li
-                                  onClick={() => handleFilter('Personal')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'Personal' ? 'bg-primary text-white' : ''
-                                  }`}
-                                >
-                                  Personal
-                                </li>
-                                <li
-                                  onClick={() => handleFilter('Public')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'Public' ? 'bg-primary text-white' : ''
-                                  }`}
-                                >
-                                  Public
-                                </li>
-                              
-                              
-                                <li
-                                  onClick={() => handleFilter('All')}
-                                  className={`cursor-pointer px-4 py-2 ${
-                                    filterOption === 'All' ? 'bg-primary text-white' : ''
-                                  }`}
-                              >
-                                All
-                              </li>
-                            </ul>
-                          </div>
-                        )}               
-                      </div>
+                <div className="flex flex-row flex-wra justify-between">
+                  <div>
+                    <h2 className="mb-3 text-black dark:text-white lg:text-2xl xl:text-3xl">
+                      Your Campaigns
+                    </h2>
+                    <p className="mb-12 text-base font-medium text-body-color">
+                      Manage your campaigns.
+                    </p>
                   </div>
+                
+                  <div className="mr-2 ">
+                    <button 
+                      type="button"
+                      onClick={toggleFilterDropdown}
+                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                        Filter                     
+                    </button>    
+                      {filterDropdownVisible && (
+                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
+                            <ul className="py-2">
+                              <li
+                                onClick={() => handleFilter('Personal')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'Personal' ? 'bg-primary text-white' : ''
+                                }`}
+                              >
+                                Personal
+                              </li>
+                              <li
+                                onClick={() => handleFilter('Public')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'Public' ? 'bg-primary text-white' : ''
+                                }`}
+                              >
+                                Public
+                              </li>
+                            
+                            
+                              <li
+                                onClick={() => handleFilter('All')}
+                                className={`cursor-pointer px-4 py-2 ${
+                                  filterOption === 'All' ? 'bg-primary text-white' : ''
+                                }`}
+                            >
+                              All
+                            </li>
+                          </ul>
+                        </div>
+                      )}               
+                  </div>
+                  <div className="">
+                    <button 
+                      type="button"
+                      onClick={fetchCampaigns}
+                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                        Refresh                     
+                    </button>                 
+                  </div>
+                </div>
                 
 
                 <div className="relative">
@@ -1388,10 +1279,10 @@ const deleteDonation = async (recordId) => {
                         >
                           <div className="flex items-center p-3">
                             <div className="flex flex-wrap w-full">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {/* <Image src={getImageFromBlob(imageBlob)} alt="Campaign Image" style={{ maxWidth: '100%' }} /> */}
-                              </div> 
-                            <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                            {/* <div className="text-xs text-gray-500 dark:text-gray-400">
+                              <ImageComponent blob={async () => await campaign.imageBlob} />                              
+                            </div>  */}
+                             <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Name</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
                                   {campaign.name}
@@ -1452,35 +1343,304 @@ const deleteDonation = async (recordId) => {
                                 <h4 className={`text-sm mt-1 py-1 px-2 rounded-xl w-fit ${campaign.type === "Personal" ? 'bg-success' : 'bg-warning'}  text-black dark:text-white`}>
                                   {campaign.type}
                                 </h4>
-                              </div>                           
+                              </div>                            
                             </div>                           
                           </div>
                           <div className="flex flex-row w-80 justify-evenly">
-                            <div className="flex p-3 w-20 justify-center rounded-xl bg-success mb-5">
-                              <button
-                                onClick={() => togglePopup(campaign.recordId)}
-                                className="text-md  font-medium"
-                                >
-                                Edit
-                              </button>
-                              {popupOpenMap[campaign.recordId] && (
+                            {campaign.sender === myDid && campaign.type === "Personal" && (
+                              <div className="flex p-3 w-20 justify-center rounded-xl bg-success mb-5">
+                                <button
+                                  onClick={() => togglePopup(campaign.recordId)}
+                                  className="text-md  font-medium"
+                                  >
+                                  Edit
+                                </button>
+                                {popupOpenMap[campaign.recordId] && (
+                                  <div
+                                    ref={popup}
+                                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+                                  >
+                                    <div
+                                        className="lg:mt-15 lg:w-1/2 rounded-lg bg-primary/[100%] dark:bg-dark pt-3 px-4 shadow-md"
+                                        style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}
+                                      >      
+                                      <div
+                                        className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                                        data-wow-delay=".15s
+                                        ">        
+                                          <div className="flex flex-row justify-between ">
+                                            <h2 className="text-xl font-semibold mb-4">Edit Campaign</h2>
+                                            <div className="flex justify-end">
+                                              <button
+                                                onClick={() => closePopup(campaign.recordId)}
+                                                className="text-blue-500 hover:text-gray-700 focus:outline-none"
+                                              >
+                                                <svg
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
+                                                  fill="none"
+                                                  viewBox="0 0 24 24"
+                                                  stroke="white"
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="2"
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                  />
+                                                </svg>
+                                              </button>
+                                            </div>  
+                                          </div>
+                                        <form>
+                                      <div className="-mx-4 flex flex-wrap">
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="title"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Title
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="text"
+                                              name="title"
+                                              value={title}
+                                              onChange={(e) => setTitle(e.target.value)}
+                                              placeholder="5 shegs/week for 1 year"
+                                              required
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="name"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Your Name
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="text"
+                                              name="name"
+                                              value={name}
+                                              onChange={(e) => setName(e.target.value)}
+                                              required
+                                              placeholder="Festus Idowu"
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="target"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Target (USD)
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="text"
+                                                name="target"
+                                                value={target}
+                                                onChange={(e) => setTarget(e.target.value)}
+                                                required
+                                              placeholder="100 USD"
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="deadline"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Deadline
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="date"
+                                                name="deadline"
+                                                value={deadline}
+                                                onChange={(e) => setDeadline(e.target.value)}
+                                                required
+                                              placeholder="31-01-2024"
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="description"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Your Shege Story
+                                            </label>
+                                            <div>
+                                            <textarea
+                                              name="description"
+                                              rows={4}
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
+                                                required
+                                              placeholder="Describe your shege story"
+                                              className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            ></textarea>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="image"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Cover Image
+                                            </label>
+                                            <div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                name="image"
+                                                onChange={handleImageInputChange}
+                                                required
+                                                className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="image"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Campaign Type
+                                            </label>
+                                            <div>
+                                            <select
+                                                className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                value={campaignType}
+                                                onChange={(e) => setCampaignType(e.target.value)}
+                                              >
+                                                <option value="personal">Personal</option>
+                                                <option value="public">Public</option>
+                                              </select>
+                                                {campaignType === 'public' && (
+                                                <input
+                                                  className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                  type="text"
+                                                  value={recipientDid}
+                                                  onChange={e => setRecipientDid(e.target.value)}
+                                                  placeholder="Enter recipient's DID"
+                                                />
+                                                )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="w-full px-4">
+                                          <button 
+                                            type="button"
+                                            onClick={() => updateCampaign(campaign.recordId, title)}
+                                            disabled={loading}
+                                            className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                            {loading ? (
+                                              <div className="flex items-center">
+                                                <div className="spinner"></div>
+                                                <span className="pl-1">Updating...</span>
+                                              </div>
+                                            ) : (
+                                              <>Update</>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+                                        </form>
+                                        </div>
+                                      </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {campaign.sender === myDid && (
+                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                                <button
+                                  onClick={() => showDeleteConfirmation(campaign.recordId)}
+                                  className="text-md font-medium"
+                                  >
+                                  Delete
+                                </button>
+                                {isDeleteConfirmationVisible && (
+                                  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                                    <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
+                                      <p>Are you sure you want to delete this campaign?</p>
+                                      <div className="mt-4 flex justify-end">
+                                        <button
+                                          onClick={hideDeleteConfirmation}
+                                          className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            hideDeleteConfirmation();
+                                            deleteCampaign(campaign.recordId);
+                                          }}
+                                          className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Confirm
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )} 
+                            
+                            {campaign.sender !== myDid && (
+                            <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-success">
+                            <button
+                              ref={trigger}
+                              onClick={() => setDonatePopupOpen(!donatePopupOpen)}
+                              className="text-md font-medium">
+                                Donate
+                            </button>
+
+                            {donatePopupOpen && (
                                 <div
                                   ref={popup}
                                   className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
                                 >
                                   <div
-                                      className="lg:mt-15 lg:w-1/2 rounded-lg bg-primary/[100%] dark:bg-dark pt-3 px-4 shadow-md"
-                                      style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}
-                                    >      
-                                    <div
-                                      className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
-                                      data-wow-delay=".15s
-                                      ">        
-                                        <div className="flex flex-row justify-between ">
-                                          <h2 className="text-xl font-semibold mb-4">Edit Campaign</h2>
-                                          <div className="flex justify-end">
+                                    className="lg:mt-15 lg:w-1/2 rounded-lg shadow-md"
+                                    style={{ maxHeight: 'calc(100vh - 200px)' }}
+                                  >              
+                                          <div
+                                            className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                                            data-wow-delay=".15s
+                                            "
+                                          >
+                                            <div className="flex justify-between">
+                                              <div>
+                                                <h2 className="mb-3 text-2xl font-bold text-black dark:text-white sm:text-3xl lg:text-2xl xl:text-3xl">
+                                                  Make a Donation
+                                                </h2>
+                                              </div>
+                                              
+                                              <div className="">
                                             <button
-                                              onClick={() => closePopup(campaign.recordId)}
+                                              onClick={() => setDonatePopupOpen(false)} 
                                               className="text-blue-500 hover:text-gray-700 focus:outline-none"
                                             >
                                               <svg
@@ -1490,227 +1650,99 @@ const deleteDonation = async (recordId) => {
                                                 viewBox="0 0 24 24"
                                                 stroke="white"
                                               >
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  strokeWidth="2"
-                                                  d="M6 18L18 6M6 6l12 12"
-                                                />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                               </svg>
                                             </button>
-                                          </div>  
-                                        </div>
-                                      <form>
-                                    <div className="-mx-4 flex flex-wrap">
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="title"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Title
-                                          </label>
-                                          <div>
-                                          <input
-                                            type="text"
-                                            name="title"
-                                            value={title}
-                                            onChange={(e) => setTitle(e.target.value)}
-                                            placeholder="5 shegs/week for 1 year"
-                                            required
-                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                          />
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="name"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Your Name
-                                          </label>
-                                          <div>
-                                          <input
-                                            type="text"
-                                            name="name"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            required
-                                            placeholder="Festus Idowu"
-                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                          />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="target"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Target (USD)
-                                          </label>
-                                          <div>
-                                          <input
-                                            type="text"
-                                              name="target"
-                                              value={target}
-                                              onChange={(e) => setTarget(e.target.value)}
-                                              required
-                                            placeholder="100 USD"
-                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                          />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="deadline"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Deadline
-                                          </label>
-                                          <div>
-                                          <input
-                                            type="date"
-                                              name="deadline"
-                                              value={deadline}
-                                              onChange={(e) => setDeadline(e.target.value)}
-                                              required
-                                            placeholder="31-01-2024"
-                                            className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                          />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="w-full px-4">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="description"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Your Shege Story
-                                          </label>
-                                          <div>
-                                          <textarea
-                                            name="description"
-                                            rows={4}
-                                              value={description}
-                                              onChange={(e) => setDescription(e.target.value)}
-                                              required
-                                            placeholder="Describe your shege story"
-                                            className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                          ></textarea>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="image"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Cover Image
-                                          </label>
-                                          <div>
-                                          <input
-                                              type="file"
-                                              accept="image/*"
-                                              name="image"
-                                              onChange={handleImageInputChange}
-                                              required
-                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="w-full px-4 md:w-1/2">
-                                        <div className="mb-8">
-                                          <label
-                                            htmlFor="image"
-                                            className="mb-3 block text-sm font-medium text-dark dark:text-white"
-                                          >
-                                            Campaign Type
-                                          </label>
-                                          <div>
-                                          <select
-                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
-                                              value={campaignType}
-                                              onChange={(e) => setCampaignType(e.target.value)}
-                                            >
-                                              <option value="personal">Personal</option>
-                                              <option value="public">Public</option>
-                                            </select>
-                                              {campaignType === 'public' && (
+
+                                        <form>
+                                        <div className="-mx-4 flex flex-wrap">
+                                        <div className="w-full px-4 ">
+                                            <div className="mb-8">
+                                              <label
+                                                htmlFor="name"
+                                                className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                              >
+                                                Recipient DID
+                                              </label>
+                                              <div>
                                               <input
-                                                className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                    className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                    type="text"
+                                                    value={campaign.sender}
+                                                    readOnly
+                                                    placeholder="Enter recipient's DID"
+                                                  />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="w-full px-4 md:w-1/2">
+                                            <div className="mb-8">
+                                              <label
+                                                htmlFor="name"
+                                                className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                              >
+                                                Your Name
+                                              </label>
+                                              <div>
+                                              <input
                                                 type="text"
-                                                value={recipientDid}
-                                                onChange={e => setRecipientDid(e.target.value)}
-                                                placeholder="Enter recipient's DID"
+                                                name="name"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                required
+                                                placeholder="Festus Idowu"
+                                                className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                               />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="w-full px-4 md:w-1/2">
+                                            <div className="mb-8">
+                                              <label
+                                                htmlFor="title"
+                                                className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                              >
+                                                Amount (USD)
+                                              </label>
+                                              <div>
+                                              <input
+                                                type="text"
+                                                name="amount"
+                                                value={amount}
+                                                onChange={(e) => setAmount(e.target.value)}
+                                                placeholder="100"
+                                                required
+                                                className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                              />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="w-full px-4">
+                                            <button 
+                                              type="button"
+                                              onClick={handleDonation}
+                                              disabled={loading}
+                                              className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                              {loading ? (
+                                                <div className="flex items-center">
+                                                  <div className="spinner"></div>
+                                                  <span className="pl-1">Donating...</span>
+                                                </div>
+                                              ) : (
+                                                <>Donate</>
                                               )}
+                                            </button>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="w-full px-4">
-                                        <button 
-                                          type="button"
-                                          onClick={() => updateCampaign(campaign.recordId, title)}
-                                          disabled={loading}
-                                          className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                                          {loading ? (
-                                            <div className="flex items-center">
-                                              <div className="spinner"></div>
-                                              <span className="pl-1">Updating...</span>
-                                            </div>
-                                          ) : (
-                                            <>Update</>
-                                          )}
-                                        </button>
-                                      </div>
-                                    </div>
-                                      </form>
-                                      </div>
-                                    </div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
-                              <button
-                                onClick={() => showDeleteConfirmation(campaign.recordId)}
-                                className="text-md font-medium"
-                                >
-                                Delete
-                              </button>
-                              {isDeleteConfirmationVisible && (
-                                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-                                  <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
-                                    <p>Are you sure you want to delete this campaign?</p>
-                                    <div className="mt-4 flex justify-end">
-                                      <button
-                                        onClick={hideDeleteConfirmation}
-                                        className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          hideDeleteConfirmation();
-                                          deleteCampaign(campaign.recordId);
-                                        }}
-                                        className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
-                                      >
-                                        Confirm
-                                      </button>
-                                    </div>
+                                        </form>
+                                          </div>
                                   </div>
                                 </div>
                               )}
                             </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1800,6 +1832,7 @@ const deleteDonation = async (recordId) => {
                               </div>
                             </div>
                           </div>
+                          {donation.sender === myDid && (
                           <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
                             <button
                               onClick={() => showDeleteConfirmation(donation.recordId)}
@@ -1832,6 +1865,7 @@ const deleteDonation = async (recordId) => {
                                 </div>
                               )}
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>
