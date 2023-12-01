@@ -11,7 +11,7 @@ import { webcrypto } from 'node:crypto';
 // @ts-ignore
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-const Dashboard = ( { blob }) => {
+const Dashboard = () => {
 
   const [web5, setWeb5] = useState(null);
   const [myDid, setMyDid] = useState(null);
