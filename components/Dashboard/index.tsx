@@ -605,7 +605,7 @@ const fetchPublicCampaigns = async () => {
     message: {
       filter: {
         protocol: "https://shege.xyz",
-        // schema: "https://shege.xyz/directCauseSchema",
+        schema: "https://shege.xyz/directCauseSchema",
       },
     },
   });
@@ -865,7 +865,6 @@ const handleDonation = async (e: FormEvent) => {
 
 
   const fetchDonations = async () => {
-    setDonationLoading(true);
     try {
     const response = await web5.dwn.records.query({
       message: {
