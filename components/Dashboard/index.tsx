@@ -1344,8 +1344,8 @@ const deleteDonation = async (recordId) => {
                           <div className="flex items-center p-3">
                             <div className="flex flex-wrap w-full">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {/* <Image src={imageURLs[index]?.imageUrl} alt="campaign image" width={100} height={100} /> */}
-                              <Image src=" http://localhost:3000/be95ac46-a96c-4bf4-a96d-95697f585881" alt="campaign image" width={100} height={100} />
+                              <Image src={imageURLs[index]?.imageUrl} alt="campaign image" width={100} height={100} />
+                              {/* <Image src=" http://localhost:3000/be95ac46-a96c-4bf4-a96d-95697f585881" alt="campaign image" width={100} height={100} /> */}
 
                              
                             </div> 
