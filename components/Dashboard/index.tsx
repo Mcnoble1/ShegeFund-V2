@@ -22,6 +22,7 @@ const Dashboard = () => {
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
+    const [imageURLs, setImageURLs] = useState([]);
     const [donations, setDonations] = useState([]);
     const [amount, setAmount] = useState("");
     const [amountRaised, setAmountRaised] = useState(0);
@@ -30,7 +31,6 @@ const Dashboard = () => {
     const [target, setTarget] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
-    const [imageBlob, setImageBlob] = useState(null);
     const [filterOption, setFilterOption] = useState<string>(''); 
     const [popupOpenMap, setPopupOpenMap] = useState<{ [key: number]: boolean }>({});
     const [isDeleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
@@ -92,7 +92,8 @@ const Dashboard = () => {
 }, []);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
-  
+  let base64Image = null;
+
   let campaignWalletAmount = 0; 
 
   useEffect(() => {
@@ -114,7 +115,6 @@ const Dashboard = () => {
         setTarget(campaign.target);
         setDeadline(campaign.deadline);
         setDescription(campaign.description);
-        // setImageBlob(campaign.image);
       }
     });
     setPopupOpenMap((prevMap) => ({
@@ -163,23 +163,9 @@ const Dashboard = () => {
 
 
 
-  const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files[0];
-
-    if (file) {
-      // Use FileReader to read the file as binary data
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        // Create a Blob from the binary data
-        const blob = new Blob([reader.result], { type: file.type });
-        setImageBlob(blob);
-        console.log(blob);
-      };
-
-      // Read the file as binary data
-      reader.readAsArrayBuffer(file);
-    }
+  const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const imageFile = event.target.files[0];
+        base64Image = imageFile;
   };
 
   
@@ -263,8 +249,16 @@ const Dashboard = () => {
                     { who: "anyone", can: "write"},
                     { who: "author", of: "personalCause", can: "read" },
                 ],
-                image: {},
             },
+            image: {
+              $actions: [
+                  { who: "author", of: "personalCause", can: "read" },
+                  { who: "author", of: "directCause", can: "read" },
+                  { who: "recipient", of: "personalCause", can: "read" },
+                  { who: "recipient", of: "directCause", can: "read" },
+                  { who: "anyone", can: "write" },
+              ],
+          },
             directCause: {
               $actions: [
                   { who: "author", of: "directCause", can: "read" },
@@ -321,41 +315,41 @@ const Dashboard = () => {
   
 
 
-    // const (e) => setTarget(e.target.value) = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    //     const { name, value } = e.target;
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
             
-    //       if ( name === 'target' || name === 'amount') {
-    //         // Use a regular expression to allow only phone numbers starting with a plus
-    //         const phoneRegex = /^[+]?[0-9\b]+$/;
+          if ( name === 'target' || name === 'amount') {
+            // Use a regular expression to allow only phone numbers starting with a plus
+            const phoneRegex = /^[+]?[0-9\b]+$/;
               
-    //         if (!value.match(phoneRegex) && value !== '') {
-    //           // If the input value doesn't match the regex and it's not an empty string, do not update the state
-    //           return;
-    //         }
-    //       } else if (name === 'name' || name === 'title' || name === 'description') {
-    //         // Use a regular expression to allow only letters and spaces
-    //         const letterRegex = /^[A-Za-z\s]+$/;
-    //         if (!value.match(letterRegex) && value !== '') {
-    //           // If the input value doesn't match the regex and it's not an empty string, do not update the state
-    //           return;
-    //         }
-    //       }
+            if (!value.match(phoneRegex) && value !== '') {
+              // If the input value doesn't match the regex and it's not an empty string, do not update the state
+              return;
+            }
+          } else if (name === 'name' || name === 'title' || name === 'description') {
+            // Use a regular expression to allow only letters and spaces
+            const letterRegex = /^[A-Za-z\s]+$/;
+            if (!value.match(letterRegex) && value !== '') {
+              // If the input value doesn't match the regex and it's not an empty string, do not update the state
+              return;
+            }
+          }
 
-    //     if (name === 'title') {
-    //         setTitle(value);
-    //     } else if (name === 'name') {
-    //         setName(value);
-    //     } else if (name === 'target') {
-    //         setTarget(value);
-    //     } else if (name === 'deadline') {
-    //         setDeadline(value);
-    //     } else if (name === 'description') {
-    //         setDescription(value);
-    //     } else if (name === 'amount') {
-    //       setAmount(value);
-    //     }
+        if (name === 'title') {
+            setTitle(value);
+        } else if (name === 'name') {
+            setName(value);
+        } else if (name === 'target') {
+            setTarget(value);
+        } else if (name === 'deadline') {
+            setDeadline(value);
+        } else if (name === 'description') {
+            setDescription(value);
+        } else if (name === 'amount') {
+          setAmount(value);
+        }
       
-    //   };
+      };
 
     // Create a mixed record and 
   const writeSecretCauseToDwn = async (campaignData) => {
@@ -376,6 +370,8 @@ const Dashboard = () => {
       return { ...campaignData, recordId: record.id };
     }
 
+    writeImageToDwn(base64Image, myDid);
+
     toast.success('Personal Campaign Data written to DWN', {
       position: toast.POSITION.TOP_RIGHT,
       autoClose: 3000, 
@@ -389,6 +385,42 @@ const Dashboard = () => {
   }
 };
 
+
+const writeImageToDwn = async (imageDataFile, recipientDID) => {
+  const imageblob = new Blob([imageDataFile], { type: 'image/jpeg' });
+
+  try {
+  const fundraiseProtocol = fundraiseProtocolDefinition();
+  const { record, status } = await web5.dwn.records.write({
+    data: imageblob,
+    message: {
+        protocol: fundraiseProtocol.protocol,
+        schema: fundraiseProtocol.types.image.schema,
+        protocolPath: "image",
+        recipient: recipientDID,
+    },
+  });
+
+  console.log("imagerecord:", {record, status})
+  if (status.code === 200) {
+    return { ...imageblob, recordId: record.id };
+  }
+
+  toast.success('Image Data written to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000, 
+  });
+    return record;
+} catch (error) {
+  console.log(error)
+
+  toast.error('Error writing image data to DWN', {
+    position: toast.POSITION.TOP_RIGHT,
+    autoClose: 3000, 
+  });
+}
+
+};
 
 const writeDirectCauseToDwn = async (campaignData) => {
 
@@ -407,6 +439,8 @@ const writeDirectCauseToDwn = async (campaignData) => {
   if (status.code === 200) {
     return { ...campaignData, recordId: record.id };
   }
+
+  writeImageToDwn(base64Image, campaignData.recipientDid);
 
   toast.success('Direct Campaign Data written to DWN', {
     position: toast.POSITION.TOP_RIGHT,
@@ -482,19 +516,24 @@ const writeDirectCauseToDwn = async (campaignData) => {
       const targetDid = campaignType === 'Public' ? recipientDid : myDid;
       let campaignData;
       let record;
+      let imageRecord;
 
       if (campaignType === 'Public') {
         console.log('Sending direct mesage...');
         campaignData = constructPublicCampaign(recipientDid);
         record = await writeDirectCauseToDwn(campaignData);
+        imageRecord = await writeImageToDwn(base64Image, recipientDid);
       } else {
         campaignData = constructPersonalCampaign();
         record = await writeSecretCauseToDwn(campaignData);
+        imageRecord = await writeImageToDwn(base64Image, myDid);
       }
 
-      if (record) {
+      if (record && imageRecord) {
         const { status } = await record.send(targetDid);
+        const { status: imageStatus } = await imageRecord.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
+        console.log("Send image record status in handleCreateCause", imageStatus);
         await fetchCampaigns();
       } else {
         toast.error('Failed to create record', {
@@ -509,7 +548,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
       setTarget("");
       setDeadline("");
       setDescription("");
-      // setImageBlob(null);
       setRecipientDid("");
 
       setCreatePopupOpen(false);
@@ -544,13 +582,14 @@ const writeDirectCauseToDwn = async (campaignData) => {
         type: 'Public', 
         description: description,
         deadline: deadline,
-        // image: imageBlob,
         recipientDid: recipientDid,
         amountRaised: amountRaised
       };
   }
 
   const constructPersonalCampaign = () => {
+
+
      const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString();
 
@@ -563,37 +602,80 @@ const writeDirectCauseToDwn = async (campaignData) => {
       target: target,
       description: description,
       deadline: deadline,
-      // image: imageBlob,
     };
   };
 
   const fetchPersonalCampaigns = async () => {
     try {
-    const response  = await web5.dwn.records.query({
-      from: myDid,
-      message: {
-        filter: {
-          protocol: "https://shege.xyz",
-          schema: "https://shege.xyz/personalCauseSchema",
-        },
-      },
-    });
+        const response  = await web5.dwn.records.query({
+          from: myDid,
+          message: {
+            filter: {
+              protocol: "https://shege.xyz",
+              schema: "https://shege.xyz/personalCauseSchema",
+            },
+          },
+        });
+        console.log('personal response', response);
 
-    
-    if (response.status.code === 200) {
-      const personalCampaigns =  await Promise.all(
-        response.records.map(async (record) => {
-          const data = await record.data.json();
-          return {
-            ...data, 
-            recordId: record.id 
+        // Get images from DWN
+
+        const imagerecords = await web5.dwn.records.query({
+          from: myDid,
+          message: {
+            filter: {
+              protocol: "https://shege.xyz",
+              protocolPath: "image",
+            },
+          },
+        });
+        console.log('imagerecords', imagerecords);
+
+        if (imagerecords.status.code === 200) {
+          const imageRecs =  await Promise.all(
+            imagerecords.records.map(async (record) => {
+              const imageId = record.id;
+
+              const { readRecord, status } = await web5.dwn.records.read({
+                from: myDid,
+                message: {
+                  filter: {
+                    recordId: imageId,
+                  }
+                }
+              });
+              console.log ("read record", {readRecord, status})    
+              const blob = await readRecord.data.blob();
+              const imageUrl = URL.createObjectURL(blob);
+              console.log("imageUrl", imageUrl);
+              return {
+                imageUrl
+              };
+            })
+
+           )
+           console.log('image records', imageRecs);
+
           };
-        })
-    );
-      return personalCampaigns;
-    } else {
-      console.error('Error fetching personal campaigns:', response.status);
-    }
+
+
+        if (response.status.code === 200) {
+          const personalCampaigns =  await Promise.all(
+            response.records.map(async (record) => {
+              const data = await record.data.json();
+              console.log(data);
+              return {
+                ...data, 
+                recordId: record.id 
+              };
+            })
+        );
+        console.log(personalCampaigns)
+
+          return personalCampaigns;
+        } else {
+          console.error('Error fetching personal campaigns:', response.status);
+        }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
   }
@@ -1040,7 +1122,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                         name="title"
                                         value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
+                                        onChange={handleInputChange}
                                         placeholder="5 shegs/week for 1 year"
                                         required
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1061,7 +1143,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                         name="name"
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={handleInputChange}
                                         required
                                         placeholder="Festus Idowu"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1082,7 +1164,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                           name="target"
                                           value={target}
-                                          onChange={(e) => setTarget(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="100 USD"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1103,7 +1185,7 @@ const deleteDonation = async (recordId) => {
                                         type="date"
                                           name="deadline"
                                           value={deadline}
-                                          onChange={(e) => setDeadline(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="31-01-2024"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1124,7 +1206,7 @@ const deleteDonation = async (recordId) => {
                                         name="description"
                                         rows={4}
                                           value={description}
-                                          onChange={(e) => setDescription(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="Describe your shege story"
                                         className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
