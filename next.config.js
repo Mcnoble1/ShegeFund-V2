@@ -7,6 +7,17 @@ const nextConfig = {
   experimental: {
     appDir: true,
   },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'shegefundv2.netlify.app',
+        port: '',
+        pathname: '',
+      },
+    ],
+  },
   
   reactStrictMode: true,
 
@@ -35,3 +46,5 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
+

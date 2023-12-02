@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, ChangeEvent, FormEvent, useCallback } from "react";
 // import useWeb5 from '../../hooks/useWeb5'; 
 // import { useNavigate } from 'react-router-dom'; 
-import ImageComponent from '../ImageComponent';
+import Image from "next/image";
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
@@ -92,7 +92,7 @@ const Dashboard = () => {
 }, []);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
-  let base64Image = null;
+  let imageData;
 
   let campaignWalletAmount = 0; 
 
@@ -164,8 +164,12 @@ const Dashboard = () => {
 
 
   const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const imageFile = event.target.files[0];
-        base64Image = imageFile;
+      const imageFile = event.target.files[0];
+      const filereader = new FileReader();
+      filereader.readAsArrayBuffer(imageFile);
+      filereader.addEventListener('load', function () {
+      imageData = filereader.result;
+    })
   };
 
   
@@ -248,24 +252,22 @@ const Dashboard = () => {
                 $actions: [
                     { who: "anyone", can: "write"},
                     { who: "author", of: "personalCause", can: "read" },
+                  ],  
+                },
+              directCause: {
+                $actions: [
+                    { who: "author", of: "directCause", can: "read" },
+                    { who: "recipient", of: "directCause", can: "read" },
+                    { who: "anyone", can: "write" },
                 ],
-            },
-            image: {
-              $actions: [
-                  { who: "author", of: "personalCause", can: "read" },
-                  { who: "author", of: "directCause", can: "read" },
-                  { who: "recipient", of: "personalCause", can: "read" },
-                  { who: "recipient", of: "directCause", can: "read" },
-                  { who: "anyone", can: "write" },
-              ],
-          },
-            directCause: {
-              $actions: [
-                  { who: "author", of: "directCause", can: "read" },
-                  { who: "recipient", of: "directCause", can: "read" },
-                  { who: "anyone", can: "write" },
-              ],
-            },
+              },
+              image: {
+                $actions: [
+                    { who: "author", of: "personalCause", can: "read" },
+                    { who: "recipient", of: "personalCause", can: "read" },
+                    { who: "anyone", can: "write" },
+                ],
+              },
             donate: {
               $actions: [ 
                   {who: "recipient", of: "directCause", can: "write"},
@@ -369,8 +371,11 @@ const Dashboard = () => {
     if (status.code === 200) {
       return { ...campaignData, recordId: record.id };
     }
+    const conId = record.id;
 
-    writeImageToDwn(base64Image, myDid);
+    if (imageData) {
+      writeImageToDwn(imageData);
+    }
 
     toast.success('Personal Campaign Data written to DWN', {
       position: toast.POSITION.TOP_RIGHT,
@@ -386,21 +391,25 @@ const Dashboard = () => {
 };
 
 
-const writeImageToDwn = async (imageDataFile, recipientDID) => {
+const writeImageToDwn = async (imageDataFile) => {
   const imageblob = new Blob([imageDataFile], { type: 'image/jpeg' });
 
   try {
   const fundraiseProtocol = fundraiseProtocolDefinition();
-  const { record, status } = await web5.dwn.records.write({
+  const { record, status } = await web5.dwn.records.create({
     data: imageblob,
     message: {
         protocol: fundraiseProtocol.protocol,
         schema: fundraiseProtocol.types.image.schema,
+        dataFormat: 'image/jpeg',
         protocolPath: "image",
-        recipient: recipientDID,
+        // parentId: contextId,
+        // contextId: contextId,
+        published: true,
     },
   });
-
+  // const { status: imagestatus } = await record.send(myDid);
+  // console.log(imagestatus);
   console.log("imagerecord:", {record, status})
   if (status.code === 200) {
     return { ...imageblob, recordId: record.id };
@@ -440,7 +449,11 @@ const writeDirectCauseToDwn = async (campaignData) => {
     return { ...campaignData, recordId: record.id };
   }
 
-  writeImageToDwn(base64Image, campaignData.recipientDid);
+  const conId = record.id;
+
+    if (imageData) {
+      writeImageToDwn(imageData);
+    }
 
   toast.success('Direct Campaign Data written to DWN', {
     position: toast.POSITION.TOP_RIGHT,
@@ -453,38 +466,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
     autoClose: 3000, 
   });
 }
-
-// try {
-//   const fundraiseProtocol = fundraiseProtocolDefinition();
-//   const { record, status } = await web5.dwn.records.write({
-//     data: campaignData,
-//     message: {
-//         protocol: fundraiseProtocol.protocol,
-//         protocolPath: "directCause",
-//         schema: fundraiseProtocol.types.directCause.schema,
-//         recipient: campaignData.recipientDid,
-//     },
-//   });
-
-//   if (status.code === 200) {
-//     return { ...campaignData, recordId: record.id };
-//   }
-
-//   console.log("Direct Campaign Data written to DWN", { record, status });
-//   toast.success('Direct Campaign Data written to DWN', {
-//     position: toast.POSITION.TOP_RIGHT,
-//     autoClose: 3000, 
-//   });
-//     return record;
-// } catch (error) {
-//   console.error('Error writing direct campaign data to DWN', error);
-//   toast.error('Error writing direct campaign data to DWN', {
-//     position: toast.POSITION.TOP_RIGHT,
-//     autoClose: 3000, 
-//   });
-  
-// }
-
 };
       
   const handleCreateCause = async (e) => {
@@ -522,14 +503,14 @@ const writeDirectCauseToDwn = async (campaignData) => {
         console.log('Sending direct mesage...');
         campaignData = constructPublicCampaign(recipientDid);
         record = await writeDirectCauseToDwn(campaignData);
-        imageRecord = await writeImageToDwn(base64Image, recipientDid);
+        imageRecord = await writeImageToDwn(imageData);
       } else {
         campaignData = constructPersonalCampaign();
         record = await writeSecretCauseToDwn(campaignData);
-        imageRecord = await writeImageToDwn(base64Image, myDid);
+        imageRecord = await writeImageToDwn(imageData);
       }
 
-      if (record && imageRecord) {
+      if (record || imageRecord) {
         const { status } = await record.send(targetDid);
         const { status: imageStatus } = await imageRecord.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
@@ -549,6 +530,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
       setDeadline("");
       setDescription("");
       setRecipientDid("");
+      imageData = "";
 
       setCreatePopupOpen(false);
       
@@ -588,8 +570,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
   }
 
   const constructPersonalCampaign = () => {
-
-
      const currentDate = new Date().toLocaleDateString();
     const currentTime = new Date().toLocaleTimeString();
 
@@ -630,40 +610,15 @@ const writeDirectCauseToDwn = async (campaignData) => {
           },
         });
         console.log('imagerecords', imagerecords);
-
-        if (imagerecords.status.code === 200) {
-          const imageRecs =  await Promise.all(
-            imagerecords.records.map(async (record) => {
-              const imageId = record.id;
-
-              const { readRecord, status } = await web5.dwn.records.read({
-                from: myDid,
-                message: {
-                  filter: {
-                    recordId: imageId,
-                  }
-                }
-              });
-              console.log ("read record", {readRecord, status})    
-              const blob = await readRecord.data.blob();
-              const imageUrl = URL.createObjectURL(blob);
-              console.log("imageUrl", imageUrl);
-              return {
-                imageUrl
-              };
-            })
-
-           )
-           console.log('image records', imageRecs);
-
-          };
-
+        
+        const campaignIds = [];
 
         if (response.status.code === 200) {
           const personalCampaigns =  await Promise.all(
             response.records.map(async (record) => {
               const data = await record.data.json();
               console.log(data);
+              campaignIds.push(record.id);
               return {
                 ...data, 
                 recordId: record.id 
@@ -671,6 +626,31 @@ const writeDirectCauseToDwn = async (campaignData) => {
             })
         );
         console.log(personalCampaigns)
+
+        imagerecords.records.forEach(async (imageRec) => {
+          console.log('this is the each image record', imageRec);
+          // Get the blob of the image data
+          const imageId = imageRec.id
+          console.log(imageId)
+           const {record, status }= await web5.dwn.records.read({
+            from: myDid,
+            message: {
+               filter: {
+                recordId: imageId,
+               },
+            },
+            });
+          console.log ({record, status})
+          const imageresult = await record.data.blob();
+          console.log(imageresult)
+          const imageid = await record.contextId;  
+          console.log(imageid)         
+          const imageUrl = URL.createObjectURL(imageresult);
+          console.log(imageUrl)
+          setImageURLs(prevImageURLs => [...prevImageURLs, imageUrl]);
+          // console.log(imageURLs);
+        })
+        // console.log(imageURLs);
 
           return personalCampaigns;
         } else {
@@ -680,6 +660,8 @@ const writeDirectCauseToDwn = async (campaignData) => {
     console.error('Error in fetchCampaigns:', error);
   }
 };
+
+console.log(imageURLs);
 
 const fetchPublicCampaigns = async () => {
   try {
@@ -1361,9 +1343,12 @@ const deleteDonation = async (recordId) => {
                         >
                           <div className="flex items-center p-3">
                             <div className="flex flex-wrap w-full">
-                            {/* <div className="text-xs text-gray-500 dark:text-gray-400">
-                              <ImageComponent blob={async () => await campaign.imageBlob} />                              
-                            </div>  */}
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {/* <Image src={imageURLs[index]?.imageUrl} alt="campaign image" width={100} height={100} /> */}
+                              <Image src=" http://localhost:3000/be95ac46-a96c-4bf4-a96d-95697f585881" alt="campaign image" width={100} height={100} />
+
+                             
+                            </div> 
                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Name</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
