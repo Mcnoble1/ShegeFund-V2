@@ -64,10 +64,10 @@ const Dashboard = () => {
       
       try {
         const { web5, did } = await Web5.connect({
-          // techPreview: {
-          //   dwnEndpoints: ["http://localhost:3000"]
-          // },
-          sync: '5s',
+          techPreview: {
+            dwnEndpoints: ["https://dwn.moras.digital"],
+          },
+          // sync: '3s',
         });
         setWeb5(web5);
         setMyDid(did);
@@ -1863,24 +1863,24 @@ const deleteDonation = async (recordId) => {
                           <div className="flex items-center p-3"> 
                             <div className="flex flex-wrap w-full">
                             <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Name</span>
+                                {/* <span className="text-md">Name</span> */}
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
-                                  {donation.name}
+                                  {donation.name} just committed {donation.amount} USD to your Campaign
                                 </h4>
                               </div>
-                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                              {/* <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Amount (USD)</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
                                   {donation.amount}
                                 </h4>
-                              </div>
+                              </div> */}
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Sender</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
                                   {shortenDID(donation.sender, 15)}
                                 </h4>
                               </div>
-                                {donation && donation.recipientDid ? (
+                                {/* {donation && donation.recipientDid ? (
                                   <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                   <span className="text-md">Recipient</span>
                                   <h4 className="text-sm mt-1  text-black dark:text-white">
@@ -1888,7 +1888,7 @@ const deleteDonation = async (recordId) => {
                                   </h4>
                                 </div>
                                 ) : null
-                              }
+                              } */}
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Timestamp</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
