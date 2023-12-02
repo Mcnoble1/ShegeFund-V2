@@ -530,7 +530,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
       setDeadline("");
       setDescription("");
       setRecipientDid("");
-      imageData = "";
+      // imageData = "";
 
       setCreatePopupOpen(false);
       
