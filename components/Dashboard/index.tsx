@@ -79,8 +79,8 @@ const Dashboard = () => {
             autoClose: 3000, 
           });
           await configureProtocol(web5, did);
-          await fetchCampaigns();
-          await fetchDonations();
+          // await fetchCampaigns();
+          // await fetchDonations();
         }
       } catch (error) {
         console.error('Error initializing Web5:', error);
@@ -1042,7 +1042,7 @@ const deleteDonation = async (recordId) => {
               <button
                 ref={trigger}
                 onClick={() => setCreatePopupOpen(!createPopupOpen)}
-                className="wow fadeInUp mb-12 text-2xl rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]">
+                className="wow fadeInUp mb-12 text-2xl dark:hover:bg-primary/[20%] rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]">
                 Create Cause
               </button>
               {createPopupOpen && (
@@ -1281,15 +1281,15 @@ const deleteDonation = async (recordId) => {
                     </p>
                   </div>
                 
-                  <div className="mr-2 ">
+                  <div className="relative mr-2 ">
                     <button 
                       type="button"
                       onClick={toggleFilterDropdown}
-                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                      className="rounded-lg  bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
                         Filter                     
                     </button>    
                       {filterDropdownVisible && (
-                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
+                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary w-full rounded-b-lg shadow-lg dark:bg-boxdark">
                             <ul className="py-2">
                               <li
                                 onClick={() => handleFilter('Personal')}

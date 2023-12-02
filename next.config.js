@@ -13,8 +13,8 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'shegefundv2.netlify.app',
-        port: '',
-        pathname: '',
+        // port: '',
+        // pathname: '',
       },
     ],
   },
