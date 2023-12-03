@@ -264,13 +264,6 @@ const Dashboard = () => {
                     { who: "recipient", of: "directCause", can: "read" },
                     { who: "anyone", can: "write" },
                 ],
-                donate: {
-                  $actions: [ 
-                      {who: "recipient", of: "directCause", can: "write"},
-                      { who: "author", of: "donate", can: "read" },
-                      { who: "recipient", of: "donate", can: "read" },
-                  ],
-                },
               },
               image: {
                 $actions: [
@@ -279,6 +272,13 @@ const Dashboard = () => {
                     { who: "anyone", can: "write" },
                 ],
               },
+            donate: {
+              $actions: [ 
+                  {who: "recipient", of: "directCause", can: "write"},
+                  { who: "author", of: "donate", can: "read" },
+                  { who: "recipient", of: "donate", can: "read" },
+              ],
+          },
         },
     };
   };
