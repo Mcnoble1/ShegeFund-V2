@@ -1731,7 +1731,7 @@ const deleteDonation = async (recordId) => {
                                         <div className="w-full px-4 ">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="did"
+                                                htmlFor="recipientDid"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Recipient DID
