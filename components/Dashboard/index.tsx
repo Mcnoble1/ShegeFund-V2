@@ -847,7 +847,7 @@ const writeDonationToDwn = async (name, amount, recipientDid) => {
     data: donationData,
     message: {
         protocol: fundraiseProtocol.protocol,
-        protocolPath: "directCause/donate",
+        protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
         recipient: donationData.recipientDid,
     },
