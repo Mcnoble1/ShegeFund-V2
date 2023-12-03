@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@next/font": "13.1.6",
-    "@web5/api": "^0.8.3-alpha-20231121-0e08575",
+    "@web5/api": "^0.8.2",
     "crypto-browserify": "^3.12.0",
     "eslint": "8.33.0",
     "eslint-config-next": "13.1.6",
@@ -27,7 +27,6 @@
     "@types/node": "^18.15.11",
     "@types/react": "^18.0.34",
     "autoprefixer": "^10.4.13",
-    "eslint-plugin-next": "^0.0.0",
     "postcss": "^8.4.21",
     "prettier": "^2.8.3",
     "prettier-plugin-tailwindcss": "^0.2.2",
