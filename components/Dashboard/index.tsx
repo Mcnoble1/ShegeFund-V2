@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, ChangeEvent, FormEvent, useCallback } from "react";
 // import useWeb5 from '../../hooks/useWeb5'; 
 // import { useNavigate } from 'react-router-dom'; 
-import Image from "next/image";
+// import Image from "next/image";
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
@@ -22,7 +22,7 @@ const Dashboard = () => {
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
-    const [imageURLs, setImageURLs] = useState([]);
+    // const [imageURLs, setImageURLs] = useState([]);
     const [donations, setDonations] = useState([]);
     const [amount, setAmount] = useState("");
     const [amountRaised, setAmountRaised] = useState(0);
@@ -63,12 +63,7 @@ const Dashboard = () => {
       const { Web5 } = await import('@web5/api/browser');
       
       try {
-        const { web5, did } = await Web5.connect({
-          techPreview: {
-            dwnEndpoints: ["https://dwn.moras.digital"],
-          },
-          // sync: '3s',
-        });
+        const { web5, did } = await Web5.connect({ sync: '5s' });
         setWeb5(web5);
         setMyDid(did);
         console.log(web5);
@@ -327,9 +322,9 @@ const Dashboard = () => {
     const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
             
-          if ( name === 'target' || name === 'amount') {
+          if ( name === 'target') {
             // Use a regular expression to allow only phone numbers starting with a plus
-            const phoneRegex = /^[+]?[0-9\b]+$/;
+            const phoneRegex = /^[0-9\b]+$/;
               
             if (!value.match(phoneRegex) && value !== '') {
               // If the input value doesn't match the regex and it's not an empty string, do not update the state
@@ -354,8 +349,6 @@ const Dashboard = () => {
             setDeadline(value);
         } else if (name === 'description') {
             setDescription(value);
-        } else if (name === 'amount') {
-          setAmount(value);
         }
       
       };
@@ -449,6 +442,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
         protocolPath: "directCause",
         schema: publicFundraiseProtocol.types.directCause.schema,
         recipient: campaignData.recipientDid,
+        published: true,
     },
   });
 
@@ -508,6 +502,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
 
       if (campaignType === 'Public') {
         console.log('Sending direct mesage...');
+        console.log(recipientDid);
         campaignData = constructPublicCampaign(recipientDid);
         record = await writeDirectCauseToDwn(campaignData);
         // imageRecord = await writeImageToDwn(imageData);
@@ -518,6 +513,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
       }
 
       if (record) {
+        console.log(targetDid);
         const { status } = await record.send(targetDid);
         // const { status: imageStatus } = await imageRecord.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
@@ -659,6 +655,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
           return personalCampaigns;
         } else {
           console.error('Error fetching personal campaigns:', response.status);
+          return [];
         }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
@@ -676,21 +673,26 @@ const fetchPublicCampaigns = async () => {
       },
     },
   });
-  if (response?.status?.code === 200) {
+  console.log('public response', response);
+
+  if (response.status.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
+        console.log(data)
         return {
           ...data, 
           recordId: record.id 
         };
       })
     );
+    console.log(publicCampaigns)
+
     
     return publicCampaigns;
   } else {
     console.error('Error fetching public campaigns:', response.status);
-    
+    return [];
   } 
   } catch (error) {
     console.error('Error in fetchPublicCampaigns:', error);
@@ -718,7 +720,7 @@ const fetchCampaigns = async () => {
     });
     setFetchLoading(false);
   }
-}
+};
 
 const handleCopyDid = async () => {
   if (myDid) {
@@ -779,8 +781,6 @@ const deleteCampaign = async (recordId) => {
   }
 };
     
-// deleteCampaign("bafyreiehhkkvnyvrk4sd47fxgmkfilvydyr5zoluinvuhlefibdn2pkcxy");
-// deleteCampaign("bafyreibljz4ifabybssxsqfqk7c6t4tiazmhm546kdapnqo2qxsaytcv3i");
 
 const updateCampaign = async (recordId, data) => {
   try {
@@ -826,7 +826,7 @@ const updateCampaign = async (recordId, data) => {
 };
 
 
-const writeDonationToDwn = async (name: string, amount: string, recipientDid: string) => {
+const writeDonationToDwn = async (name, amount, recipientDid) => {
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
@@ -1241,7 +1241,7 @@ const deleteDonation = async (recordId) => {
                                             className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                             type="text"
                                             value={recipientDid}
-                                            onChange={e => setRecipientDid(e.target.value)}
+                                            onChange={(e) => setRecipientDid(e.target.value)}
                                             placeholder="Enter recipient's DID"
                                           />
                                           )}
@@ -1474,7 +1474,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                               name="title"
                                               value={title}
-                                              onChange={(e) => setTitle(e.target.value)}
+                                              onChange={handleInputChange}
                                               placeholder="5 shegs/week for 1 year"
                                               required
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1495,7 +1495,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                               name="name"
                                               value={name}
-                                              onChange={(e) => setName(e.target.value)}
+                                              onChange={handleInputChange}
                                               required
                                               placeholder="Festus Idowu"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1516,7 +1516,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                                 name="target"
                                                 value={target}
-                                                onChange={(e) => setTarget(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="100 USD"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1537,7 +1537,7 @@ const deleteDonation = async (recordId) => {
                                               type="date"
                                                 name="deadline"
                                                 value={deadline}
-                                                onChange={(e) => setDeadline(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="31-01-2024"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1558,7 +1558,7 @@ const deleteDonation = async (recordId) => {
                                               name="description"
                                               rows={4}
                                                 value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="Describe your shege story"
                                               className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1589,7 +1589,7 @@ const deleteDonation = async (recordId) => {
                                         <div className="w-full px-4 md:w-1/2">
                                           <div className="mb-8">
                                             <label
-                                              htmlFor="image"
+                                              htmlFor="campaignType"
                                               className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                             >
                                               Campaign Type
@@ -1600,15 +1600,15 @@ const deleteDonation = async (recordId) => {
                                                 value={campaignType}
                                                 onChange={(e) => setCampaignType(e.target.value)}
                                               >
-                                                <option value="personal">Personal</option>
-                                                <option value="public">Public</option>
+                                                <option value="Personal">Personal</option>
+                                                <option value="Public">Public</option>
                                               </select>
-                                                {campaignType === 'public' && (
+                                                {campaignType === 'Public' && (
                                                 <input
                                                   className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                   type="text"
                                                   value={recipientDid}
-                                                  onChange={e => setRecipientDid(e.target.value)}
+                                                  onChange={(e) => setRecipientDid(e.target.value)}
                                                   placeholder="Enter recipient's DID"
                                                 />
                                                 )}
@@ -1728,7 +1728,7 @@ const deleteDonation = async (recordId) => {
                                         <div className="w-full px-4 ">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="name"
+                                                htmlFor="did"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Recipient DID
@@ -1768,7 +1768,7 @@ const deleteDonation = async (recordId) => {
                                           <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="title"
+                                                htmlFor="amount"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Amount (USD)
