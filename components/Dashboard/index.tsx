@@ -918,6 +918,7 @@ const handleDonation = async (e: FormEvent) => {
     
       setName("");
       setAmount("");
+      setRecipientDid("");
       setLoading(false);
 
       setDonatePopupOpen(false);
@@ -1741,7 +1742,8 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     name="recipientDid"
-                                                    value={campaign.sender}
+                                                    value={recipientDid}
+                                                    onChange={(e) => setRecipientDid(e.target.value)}
                                                     // readOnly
                                                     placeholder="Enter recipient's DID"
                                                   />
