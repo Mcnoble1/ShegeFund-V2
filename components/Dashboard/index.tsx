@@ -275,6 +275,7 @@ const Dashboard = () => {
             donate: {
               $actions: [ 
                   {who: "recipient", of: "directCause", can: "write"},
+                  {who: "author", of: "donate", can: "write"},
                   { who: "author", of: "donate", can: "read" },
                   { who: "recipient", of: "donate", can: "read" },
               ],
