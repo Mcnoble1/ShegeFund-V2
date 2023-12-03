@@ -852,6 +852,7 @@ const writeDonationToDwn = async (name, amount, recipientDid) => {
         recipient: donationData.recipientDid,
     },
   });
+  console.log("donation written", record, status);
 
   if (status.code === 200) {
     return { ...donationData, recordId: record.id };
@@ -876,27 +877,27 @@ const handleDonation = async (e: FormEvent) => {
   console.log('Making a donation...');
 
   // Validate the form fields
-  const requiredFields = ['name', 'amount'];
-  const emptyFields = requiredFields.filter((field) => ![field]);
+  // const requiredFields = ['name', 'amount'];
+  // const emptyFields = requiredFields.filter((field) => ![field]);
 
-    if (emptyFields.length > 0) {
-        toast.error('Please fill in all required fields.', {
-        position: toast.POSITION.TOP_RIGHT,
-        autoClose: 3000, 
-        });
+  //   if (emptyFields.length > 0) {
+  //       toast.error('Please fill in all required fields.', {
+  //       position: toast.POSITION.TOP_RIGHT,
+  //       autoClose: 3000, 
+  //       });
         
-        requiredFields.forEach((field) => {
-        if (![field]) {
-            // Find the corresponding input element and add the error class
-            const inputElement = document.querySelector(`[name="${field}"]`);
-            if (inputElement) {
-            inputElement.parentElement?.classList.add('error-outline');
-            }
-        }
-        });
+  //       requiredFields.forEach((field) => {
+  //       if (![field]) {
+  //           // Find the corresponding input element and add the error class
+  //           const inputElement = document.querySelector(`[name="${field}"]`);
+  //           if (inputElement) {
+  //           inputElement.parentElement?.classList.add('error-outline');
+  //           }
+  //       }
+  //       });
 
-        return; // Prevent form submission
-    }
+  //       return; // Prevent form submission
+  //   }
 
 
     try {
@@ -1740,7 +1741,7 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     value={campaign.sender}
-                                                    readOnly
+                                                    // readOnly
                                                     placeholder="Enter recipient's DID"
                                                   />
                                               </div>
