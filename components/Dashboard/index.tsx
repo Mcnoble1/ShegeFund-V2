@@ -264,6 +264,13 @@ const Dashboard = () => {
                     { who: "recipient", of: "directCause", can: "read" },
                     { who: "anyone", can: "write" },
                 ],
+                donate: {
+                  $actions: [ 
+                      {who: "recipient", of: "directCause", can: "write"},
+                      { who: "author", of: "donate", can: "read" },
+                      { who: "recipient", of: "donate", can: "read" },
+                  ],
+                },
               },
               image: {
                 $actions: [
@@ -272,13 +279,6 @@ const Dashboard = () => {
                     { who: "anyone", can: "write" },
                 ],
               },
-            donate: {
-              $actions: [ 
-                  {who: "anyone", can: "write"},
-                  { who: "author", of: "donate", can: "read" },
-                  { who: "recipient", of: "donate", can: "read" },
-              ],
-          },
         },
     };
   };
@@ -847,7 +847,7 @@ const writeDonationToDwn = async (name, amount, recipientDid) => {
     data: donationData,
     message: {
         protocol: fundraiseProtocol.protocol,
-        protocolPath: "donate",
+        protocolPath: "directCause/donate",
         schema: fundraiseProtocol.types.donate.schema,
         recipient: donationData.recipientDid,
     },
