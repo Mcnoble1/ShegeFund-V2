@@ -427,7 +427,7 @@ const Dashboard = () => {
 
 const writeDirectCauseToDwn = async (campaignData) => {
   setCampaign(campaignData.title);
-  setDonationRecipient(campaignData.recipientDid);
+  setDonationRecipient(campaignData.sender);
   try {
   const publicFundraiseProtocol = fundraiseProtocolDefinition();
   const { record, status } = await web5.dwn.records.write({
