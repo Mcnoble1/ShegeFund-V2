@@ -42,6 +42,7 @@ const Dashboard = () => {
 
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
+    const [sharePopupOpen, setSharePopupOpen] = useState(false);
 
     // const { web5, myDid } = useWeb5();
 
@@ -109,29 +110,7 @@ const Dashboard = () => {
   }, [donatePopupOpen, createPopupOpen]);
   
   const trigger = useRef<HTMLButtonElement | null>(null);
-  const popup = useRef<HTMLDivElement | null>(null);
-
-
-  // Continuously fetch campaigns every 2 secs
-  useEffect(() => {
-    if (!web5 || !myDid) return;
-    const intervalId = setInterval(async () => {
-      await fetchCampaigns();
-    }, 30000);
-
-    return () => clearInterval(intervalId);
-  }, [web5, myDid]);
-
-
-  // Continuously fet donations every 2 secs
-  useEffect(() => {
-    if (!web5 || !myDid) return;
-    const intervalId = setInterval(async () => {
-      await fetchDonations();
-    }, 30000);
-
-    return () => clearInterval(intervalId);
-  }, [web5, myDid]);
+  const popup = useRef<HTMLDivElement | null>(null);  
 
   
   const togglePopup = (recordId: string) => {
@@ -297,10 +276,9 @@ const Dashboard = () => {
               },
             donate: {
               $actions: [ 
-                  {who: "recipient", of: "directCause", can: "write"},
-                  {who: "author", of: "donate", can: "write"},
                   { who: "author", of: "donate", can: "read" },
                   { who: "recipient", of: "donate", can: "read" },
+                  { who: "anyone", can: "write" },
               ],
           },
         },
@@ -761,10 +739,10 @@ const fetchCampaigns = async () => {
     const publicCampaigns = await fetchPublicCampaigns();
     const allCampaigns = [...(personalCampaigns || []), ...(publicCampaigns || [])]; 
     setCampaigns(allCampaigns)
-    // toast.success('Campaigns fetched successfully:', {
-    //   position: toast.POSITION.TOP_RIGHT,
-    //   autoClose: 3000, 
-    // });
+    toast.success('Campaigns fetched successfully:', {
+      position: toast.POSITION.TOP_RIGHT,
+      autoClose: 3000, 
+    });
     setFetchLoading(false);
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
@@ -1010,10 +988,10 @@ const handleDonation = async (e: FormEvent) => {
         })
       );
       setDonations(donations);
-      // toast.success('Donations fetched successfully.', {
-      //   position: toast.POSITION.TOP_RIGHT,
-      //   autoClose: 3000, 
-      // });
+      toast.success('Donations fetched successfully.', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
       setDonationLoading(false);
       return donations;
     } else {
@@ -1698,14 +1676,16 @@ const deleteDonation = async (recordId) => {
                             )}
 
                             {campaign.sender === myDid && campaign.type === "Public" && (
-                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                              <div className="flex flex-row justify-between">
+                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-success">
                                 <button
-                                  onClick={() => togglePopup(campaign.recordId)}
+                                ref={trigger}
+                                onClick={() => setSharePopupOpen(!sharePopupOpen)}
                                   className="text-md  font-medium"
                                   >
                                   Share
                                 </button>
-                                {popupOpenMap[campaign.recordId] && (
+                                {sharePopupOpen && (
                                   <div
                                     ref={popup}
                                     className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
@@ -1789,6 +1769,8 @@ const deleteDonation = async (recordId) => {
                                       </div>
                                   </div>
                                 )}
+                              </div>
+                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
                                 <button
                                   onClick={() => showDeleteConfirmation(campaign.recordId)}
                                   className="text-md font-medium"
@@ -1819,6 +1801,7 @@ const deleteDonation = async (recordId) => {
                                     </div>
                                   </div>
                                 )}
+                              </div>
                               </div>
                             )} 
                             
