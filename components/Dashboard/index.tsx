@@ -117,7 +117,7 @@ const Dashboard = () => {
     if (!web5 || !myDid) return;
     const intervalId = setInterval(async () => {
       await fetchCampaigns();
-    }, 3000);
+    }, 30000);
 
     return () => clearInterval(intervalId);
   }, [web5, myDid]);
@@ -128,7 +128,7 @@ const Dashboard = () => {
     if (!web5 || !myDid) return;
     const intervalId = setInterval(async () => {
       await fetchDonations();
-    }, 3000);
+    }, 30000);
 
     return () => clearInterval(intervalId);
   }, [web5, myDid]);
@@ -680,14 +680,12 @@ const writeDirectCauseToDwn = async (campaignData) => {
           const personalCampaigns =  await Promise.all(
             response.records.map(async (record) => {
               const data = await record.data.json();
-              console.log(data);
               return {
                 ...data, 
                 recordId: record.id 
               };
             })
         );
-        console.log(personalCampaigns)
 
         // imagerecords.records.forEach(async (imageRec) => {
         //   console.log('this is the each image record', imageRec);
@@ -733,20 +731,17 @@ const fetchPublicCampaigns = async () => {
       },
     },
   });
-  console.log('public response', response);
 
   if (response.status.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
-        console.log(data)
         return {
           ...data, 
           recordId: record.id 
         };
       })
     );
-    console.log(publicCampaigns)
 
     
     return publicCampaigns;
@@ -761,16 +756,15 @@ const fetchPublicCampaigns = async () => {
 
 const fetchCampaigns = async () => {
   setFetchLoading(true);
-  console.log('Fetching campaigns...');
   try {
     const personalCampaigns = await fetchPersonalCampaigns();
     const publicCampaigns = await fetchPublicCampaigns();
     const allCampaigns = [...(personalCampaigns || []), ...(publicCampaigns || [])]; 
     setCampaigns(allCampaigns)
-    toast.success('Campaigns fetched successfully:', {
-      position: toast.POSITION.TOP_RIGHT,
-      autoClose: 3000, 
-    });
+    // toast.success('Campaigns fetched successfully:', {
+    //   position: toast.POSITION.TOP_RIGHT,
+    //   autoClose: 3000, 
+    // });
     setFetchLoading(false);
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
@@ -812,7 +806,6 @@ const deleteCampaign = async (recordId) => {
       const deleteResult = await record.delete();
 
       if (deleteResult.status.code === 202) {
-        console.log('Campaign deleted successfully');
         toast.success('Campaign deleted successfully', {
           position: toast.POSITION.TOP_RIGHT,
           autoClose: 3000, 
@@ -1017,10 +1010,10 @@ const handleDonation = async (e: FormEvent) => {
         })
       );
       setDonations(donations);
-      toast.success('Donations fetched successfully.', {
-        position: toast.POSITION.TOP_RIGHT,
-        autoClose: 3000, 
-      });
+      // toast.success('Donations fetched successfully.', {
+      //   position: toast.POSITION.TOP_RIGHT,
+      //   autoClose: 3000, 
+      // });
       setDonationLoading(false);
       return donations;
     } else {
