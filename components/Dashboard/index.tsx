@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [updateLoading, setUpdateLoading] = useState<boolean>(false);
   const [donationLoading, setDonationLoading] = useState(false)
     const [recipientDid, setRecipientDid] = useState('');
+    const [donationRecipient, setDonationRecipient] = useState('');
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
@@ -466,6 +467,8 @@ const writeDirectCauseToDwn = async (campaignData) => {
     e.preventDefault();
     setLoading(true); 
 
+    setCampaign(title);
+    setDonationRecipient(recipientDid);
   // const requiredFields = ['title', 'name', 'target', 'deadline', 'description'];
   // const emptyFields = requiredFields.filter((field) => ![field]);
 
@@ -1903,8 +1906,8 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     name="recipientDid"
-                                                    value={`"${campaign.sender}"`}
-                                                    onChange={(e) => setRecipientDid(e.target.value)}
+                                                    value={donationRecipient}
+                                                    onChange={(e) => setDonationRecipient(e.target.value)}
                                                   />
                                               </div>
                                             </div>
@@ -1922,7 +1925,7 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     name="title"
-                                                    value={campaign.title}
+                                                    value={campaign}
                                                     onChange={(e) => setCampaign(e.target.value)}
                                                   />
                                               </div>
