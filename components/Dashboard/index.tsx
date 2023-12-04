@@ -32,7 +32,7 @@ const Dashboard = () => {
     const [title, setTitle] = useState("");
     const [name, setName] = useState("");
     const [target, setTarget] = useState("");
-    const [campaign, setCampaign] = useState("");
+    const [campaignTitle, setCampaignTitle] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
     const [filterOption, setFilterOption] = useState<string>(''); 
@@ -855,7 +855,7 @@ const updateCampaign = async (recordId, data) => {
 };
 
 
-const writeDonationToDwn = async (name, amount, recipientDid, campaign) => {
+const writeDonationToDwn = async (name, amount, recipientDid, campaignTitle) => {
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
@@ -863,7 +863,7 @@ const writeDonationToDwn = async (name, amount, recipientDid, campaign) => {
   const donationData = {
     name: name,
     amount: amount,
-    campaign: campaign,
+    campaignTitle: campaignTitle,
     timestamp: `${currentDate} ${currentTime}`,
     sender: myDid, 
     recipientDid: recipientDid,
@@ -930,7 +930,7 @@ const handleDonation = async (e: FormEvent) => {
 
     try {
       let record;
-      record = await writeDonationToDwn(name, amount, recipientDid, campaign);
+      record = await writeDonationToDwn(name, amount, recipientDid, campaignTitle);
 
       if (record) {
         const { status } = await record.send(recipientDid);
@@ -949,7 +949,7 @@ const handleDonation = async (e: FormEvent) => {
       setName("");
       setAmount("");
       setRecipientDid("");
-      setCampaign("");
+      setCampaignTitle("");
       setLoading(false);
 
       setDonatePopupOpen(false);
@@ -1943,8 +1943,8 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     name="campaign"
-                                                    value={campaign}
-                                                    onChange={(e) => setCampaign(e.target.value)}
+                                                    value={campaignTitle}
+                                                    // onChange={(e) => setCampaignTitle(e.target.value)}
                                                     placeholder="Campaign Title"
                                                   />
                                               </div>
@@ -2072,7 +2072,7 @@ const deleteDonation = async (recordId) => {
                             <div className="flex flex-wrap w-full">
                             <div className="w-full mb-5 text-gray-500 dark:text-gray-400">
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
-                                  {donation.name} committed {donation.amount} USD to {donation.campaign} Campaign.
+                                  {donation.name} committed {donation.amount} USD to {donation.campaignTitle} Campaign.
                                 </h4>
                               </div>
                               
