@@ -1672,11 +1672,44 @@ const deleteDonation = async (recordId) => {
                                       </div>
                                   </div>
                                 )}
+                                
+                                <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                                <button
+                                  onClick={() => showDeleteConfirmation(campaign.recordId)}
+                                  className="text-md font-medium"
+                                  >
+                                  Delete
+                                </button>
+                                {isDeleteConfirmationVisible && (
+                                  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                                    <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
+                                      <p>Are you sure you want to delete this campaign?</p>
+                                      <div className="mt-4 flex justify-end">
+                                        <button
+                                          onClick={hideDeleteConfirmation}
+                                          className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            hideDeleteConfirmation();
+                                            deleteCampaign(campaign.recordId);
+                                          }}
+                                          className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Confirm
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                               </div>
                             )}
 
                             {campaign.sender === myDid && campaign.type === "Public" && (
-                              <div className="flex flex-row justify-between">
+                              <div className="flex w-full flex-row justify-evenly">
                               <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-success">
                                 <button
                                 ref={trigger}
@@ -1702,7 +1735,7 @@ const deleteDonation = async (recordId) => {
                                             <h2 className="text-xl font-semibold mb-4">Share Campaign</h2>
                                             <div className="flex justify-end">
                                               <button
-                                                onClick={() => closePopup(campaign.recordId)}
+                                                onClick={() => setSharePopupOpen(false)}
                                                 className="text-blue-500 hover:text-gray-700 focus:outline-none"
                                               >
                                                 <svg
@@ -1736,7 +1769,7 @@ const deleteDonation = async (recordId) => {
                                             <input
                                               type="text"
                                               name="recipientDid"
-                                              value={title}
+                                              value={recipientDid}
                                               onChange={(e) => setRecipientDid(e.target.value)}
                                               placeholder="Paste Recipient DID"
                                               required
@@ -1996,10 +2029,10 @@ const deleteDonation = async (recordId) => {
                         >
                           <div className="flex items-center p-3"> 
                             <div className="flex flex-wrap w-full">
-                            <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                            <div className="w-full mb-5 text-gray-500 dark:text-gray-400">
                                 {/* <span className="text-md">Name</span> */}
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
-                                  {donation.name} just committed {donation.amount} USD to your Campaign
+                                  {donation.name} committed {donation.amount} USD to your Campaign.
                                 </h4>
                               </div>
                               {/* <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
