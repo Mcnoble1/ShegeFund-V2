@@ -856,7 +856,7 @@ const updateCampaign = async (recordId, data) => {
 };
 
 
-const writeDonationToDwn = async (name, amount, recipientDid, campaignTitle) => {
+const writeDonationToDwn = async (name, amount, donationRecipient, campaignTitle) => {
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
@@ -867,7 +867,7 @@ const writeDonationToDwn = async (name, amount, recipientDid, campaignTitle) => 
     campaignTitle: campaignTitle,
     timestamp: `${currentDate} ${currentTime}`,
     sender: myDid, 
-    recipientDid: recipientDid,
+    donationRecipient: donationRecipient,
   };
 
   try {
@@ -878,7 +878,7 @@ const writeDonationToDwn = async (name, amount, recipientDid, campaignTitle) => 
         protocol: fundraiseProtocol.protocol,
         protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
-        recipient: donationData.recipientDid,
+        recipient: donationData.donationRecipient,
         published: true,
     },
   });
@@ -2087,7 +2087,7 @@ const deleteDonation = async (recordId) => {
                                   <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                   <span className="text-md">Recipient</span>
                                   <h4 className="text-sm mt-1  text-black dark:text-white">
-                                    {shortenDID(donation.recipientDid, 15)}
+                                    {shortenDID(donation.donationRecipient, 15)}
                                   </h4>
                                 </div>
                                 ) : null
