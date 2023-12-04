@@ -1449,7 +1449,7 @@ const deleteDonation = async (recordId) => {
                                   />
                                   <button
                                     onClick={handleCopyDid}
-                                    className="absolute right-0 top-0 h-full px-2 py-2 bg-primary rounded-lg dark:bg-white dark:text-black"
+                                    className="absolute px-2 py-2 bg-primary rounded-lg dark:bg-white dark:text-black"
                                   >
                                     {didCopied ? "Copied" : "Copy"}
                                   </button>
@@ -1944,7 +1944,7 @@ const deleteDonation = async (recordId) => {
                                                     type="text"
                                                     name="campaign"
                                                     value={campaignTitle}
-                                                    // onChange={(e) => setCampaignTitle(e.target.value)}
+                                                    onChange={(e) => setCampaignTitle(e.target.value)}
                                                     placeholder="Campaign Title"
                                                   />
                                               </div>
