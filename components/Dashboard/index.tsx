@@ -111,6 +111,29 @@ const Dashboard = () => {
   const trigger = useRef<HTMLButtonElement | null>(null);
   const popup = useRef<HTMLDivElement | null>(null);
 
+
+  // Continuously fetch campaigns every 2 secs
+  useEffect(() => {
+    if (!web5 || !myDid) return;
+    const intervalId = setInterval(async () => {
+      await fetchCampaigns();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [web5, myDid]);
+
+
+  // Continuously fet donations every 2 secs
+  useEffect(() => {
+    if (!web5 || !myDid) return;
+    const intervalId = setInterval(async () => {
+      await fetchDonations();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [web5, myDid]);
+
+  
   const togglePopup = (recordId: string) => {
     campaigns.map((campaign) => { 
       if (campaign.recordId === recordId) {
@@ -556,6 +579,40 @@ const writeDirectCauseToDwn = async (campaignData) => {
         setLoading(false);
       }
   };
+
+  const shareCampaign = async (recordId) => {
+    try {
+      const response = await web5.dwn.records.query({
+        message: {
+          filter: {
+            recordId: recordId,
+          },
+        },
+      });
+  
+      if (response.records && response.records.length > 0) {
+        const record = response.records[0];
+        const { status } = await record.send(recipientDid);
+        console.log("Send record status in shareCampaign", status);
+        toast.success('Campaign shared successfully.', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+      } else {
+        console.error('No record found with the specified ID');
+        toast.error('No record found with the specified ID', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+      }
+    } catch (error) {
+      console.error('Error in shareCampaign:', error);
+      toast.error('Error in shareCampaign:', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
+    }
+  };
   
   const constructPublicCampaign = (recipientDid) => {
       const currentDate = new Date().toLocaleDateString();
@@ -851,6 +908,7 @@ const writeDonationToDwn = async (name, amount, recipientDid) => {
         protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
         recipient: donationData.recipientDid,
+        published: true,
     },
   });
   console.log("donation written", record, status);
@@ -907,6 +965,7 @@ const handleDonation = async (e: FormEvent) => {
 
       if (record) {
         const { status } = await record.send(recipientDid);
+        console.log(recipientDid);
         console.log("Send record status in handleDonation", status);
         toast.success('Donation record sent', {
           position: toast.POSITION.TOP_RIGHT,
@@ -1645,8 +1704,98 @@ const deleteDonation = async (recordId) => {
                               </div>
                             )}
 
-                            {campaign.sender === myDid && (
+                            {campaign.sender === myDid && campaign.type === "Public" && (
                               <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                                <button
+                                  onClick={() => togglePopup(campaign.recordId)}
+                                  className="text-md  font-medium"
+                                  >
+                                  Share
+                                </button>
+                                {popupOpenMap[campaign.recordId] && (
+                                  <div
+                                    ref={popup}
+                                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+                                  >
+                                    <div
+                                        className="lg:mt-15 lg:w-1/2 rounded-lg bg-primary/[100%] dark:bg-dark pt-3 px-4 shadow-md"
+                                        style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}
+                                      >      
+                                      <div
+                                        className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                                        data-wow-delay=".15s
+                                        ">        
+                                          <div className="flex flex-row justify-between ">
+                                            <h2 className="text-xl font-semibold mb-4">Share Campaign</h2>
+                                            <div className="flex justify-end">
+                                              <button
+                                                onClick={() => closePopup(campaign.recordId)}
+                                                className="text-blue-500 hover:text-gray-700 focus:outline-none"
+                                              >
+                                                <svg
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
+                                                  fill="none"
+                                                  viewBox="0 0 24 24"
+                                                  stroke="white"
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="2"
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                  />
+                                                </svg>
+                                              </button>
+                                            </div>  
+                                          </div>
+                                        <form>
+                                      <div className="-mx-4 flex flex-wrap">
+                                        <div className="w-full px-4 md:w-1/2">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="recipientDid"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Recipient DID
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="text"
+                                              name="recipientDid"
+                                              value={title}
+                                              onChange={(e) => setRecipientDid(e.target.value)}
+                                              placeholder="Paste Recipient DID"
+                                              required
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                       
+                                        <div className="w-full px-4">
+                                          <button 
+                                            type="button"
+                                            onClick={() => shareCampaign(campaign.recordId)}
+                                            disabled={loading}
+                                            className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                            {loading ? (
+                                              <div className="flex items-center">
+                                                <div className="spinner"></div>
+                                                <span className="pl-1">Sharing...</span>
+                                              </div>
+                                            ) : (
+                                              <>Share</>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+                                        </form>
+                                        </div>
+                                      </div>
+                                  </div>
+                                )}
                                 <button
                                   onClick={() => showDeleteConfirmation(campaign.recordId)}
                                   className="text-md font-medium"
