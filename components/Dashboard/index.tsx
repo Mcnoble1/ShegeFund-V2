@@ -426,7 +426,8 @@ const Dashboard = () => {
 // };
 
 const writeDirectCauseToDwn = async (campaignData) => {
-
+  setCampaign(campaignData.title);
+  setDonationRecipient(campaignData.recipientDid);
   try {
   const publicFundraiseProtocol = fundraiseProtocolDefinition();
   const { record, status } = await web5.dwn.records.write({
@@ -467,8 +468,7 @@ const writeDirectCauseToDwn = async (campaignData) => {
     e.preventDefault();
     setLoading(true); 
 
-    setCampaign(title);
-    setDonationRecipient(recipientDid);
+    
   // const requiredFields = ['title', 'name', 'target', 'deadline', 'description'];
   // const emptyFields = requiredFields.filter((field) => ![field]);
 
