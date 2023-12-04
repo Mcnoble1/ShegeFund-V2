@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, ChangeEvent, FormEvent, useCallback } from "react";
 // import useWeb5 from '../../hooks/useWeb5'; 
 // import { useNavigate } from 'react-router-dom'; 
-import ImageComponent from '../ImageComponent';
+// import Image from "next/image";
 import { toast } from 'react-toastify'; 
 import 'react-toastify/dist/ReactToastify.css'; 
 import "../../styles/index.css";
@@ -16,21 +16,25 @@ const Dashboard = () => {
   const [web5, setWeb5] = useState(null);
   const [myDid, setMyDid] = useState(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [getCampaignsLoading, setGetCampaignsLoading] = useState<boolean>(false);
+  const [getDonationsLoading, setGetDonationsLoading] = useState<boolean>(false);
+  const [shareLoading, setShareLoading] = useState<boolean>(false);
+  const [updateLoading, setUpdateLoading] = useState<boolean>(false);
   const [donationLoading, setDonationLoading] = useState(false)
-  const [fetchLoading, setFetchLoading] = useState<boolean>(false);
     const [recipientDid, setRecipientDid] = useState('');
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
+    // const [imageURLs, setImageURLs] = useState([]);
     const [donations, setDonations] = useState([]);
     const [amount, setAmount] = useState("");
     const [amountRaised, setAmountRaised] = useState(0);
     const [title, setTitle] = useState("");
     const [name, setName] = useState("");
     const [target, setTarget] = useState("");
+    const [campaign, setCampaign] = useState("");
     const [deadline, setDeadline] = useState("");
     const [description, setDescription] = useState("");
-    const [imageBlob, setImageBlob] = useState(null);
     const [filterOption, setFilterOption] = useState<string>(''); 
     const [popupOpenMap, setPopupOpenMap] = useState<{ [key: number]: boolean }>({});
     const [isDeleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
@@ -42,19 +46,7 @@ const Dashboard = () => {
 
     const [createPopupOpen, setCreatePopupOpen] = useState(false);
     const [donatePopupOpen, setDonatePopupOpen] = useState(false);
-
-    // const { web5, myDid } = useWeb5();
-
-  //   useEffect(() => {
-  //     const configure = async () => {
-  //     if (web5 && myDid) {
-  //       await configureProtocol(web5, myDid);
-  //       await fetchCampaigns(web5, myDid);
-  //       await fetchDonations();
-  //     }
-  //   };
-  //   configure();
-  // }, []);
+    const [sharePopupOpen, setSharePopupOpen] = useState(false);
 
   useEffect(() => {
 
@@ -63,11 +55,8 @@ const Dashboard = () => {
       const { Web5 } = await import('@web5/api/browser');
       
       try {
-        const { web5, did } = await Web5.connect({
-          // techPreview: {
-          //   dwnEndpoints: ["http://localhost:3000"]
-          // },
-          sync: '5s',
+        const { web5, did } = await Web5.connect({ 
+          sync: '5s', 
         });
         setWeb5(web5);
         setMyDid(did);
@@ -79,8 +68,6 @@ const Dashboard = () => {
             autoClose: 3000, 
           });
           await configureProtocol(web5, did);
-          await fetchCampaigns();
-          await fetchDonations();
         }
       } catch (error) {
         console.error('Error initializing Web5:', error);
@@ -91,8 +78,16 @@ const Dashboard = () => {
  
 }, []);
 
+// useEffect(() => {
+//   return () => {
+//     // Revoke the Blob URL to free up resources
+//     URL.revokeObjectURL(imageURLs.map((imageURL) => imageURL));
+//   };
+// }, [imageURLs]);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null); 
-  
+  // let imageData;
+
   let campaignWalletAmount = 0; 
 
   useEffect(() => {
@@ -104,8 +99,9 @@ const Dashboard = () => {
   }, [donatePopupOpen, createPopupOpen]);
   
   const trigger = useRef<HTMLButtonElement | null>(null);
-  const popup = useRef<HTMLDivElement | null>(null);
+  const popup = useRef<HTMLDivElement | null>(null);  
 
+  
   const togglePopup = (recordId: string) => {
     campaigns.map((campaign) => { 
       if (campaign.recordId === recordId) {
@@ -114,7 +110,6 @@ const Dashboard = () => {
         setTarget(campaign.target);
         setDeadline(campaign.deadline);
         setDescription(campaign.description);
-        // setImageBlob(campaign.image);
       }
     });
     setPopupOpenMap((prevMap) => ({
@@ -163,24 +158,14 @@ const Dashboard = () => {
 
 
 
-  const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files[0];
-
-    if (file) {
-      // Use FileReader to read the file as binary data
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        // Create a Blob from the binary data
-        const blob = new Blob([reader.result], { type: file.type });
-        setImageBlob(blob);
-        console.log(blob);
-      };
-
-      // Read the file as binary data
-      reader.readAsArrayBuffer(file);
-    }
-  };
+  // const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  //     const imageFile = event.target.files[0];
+  //     const filereader = new FileReader();
+  //     filereader.readAsArrayBuffer(imageFile);
+  //     filereader.addEventListener('load', function () {
+  //     imageData = filereader.result;
+  //   })
+  // };
 
   
 
@@ -262,21 +247,27 @@ const Dashboard = () => {
                 $actions: [
                     { who: "anyone", can: "write"},
                     { who: "author", of: "personalCause", can: "read" },
+                  ],  
+                },
+              directCause: {
+                $actions: [
+                    { who: "author", of: "directCause", can: "read" },
+                    { who: "recipient", of: "directCause", can: "read" },
+                    { who: "anyone", can: "write" },
                 ],
-                image: {},
-            },
-            directCause: {
-              $actions: [
-                  { who: "author", of: "directCause", can: "read" },
-                  { who: "recipient", of: "directCause", can: "read" },
-                  { who: "anyone", can: "write" },
-              ],
-            },
+              },
+              image: {
+                $actions: [
+                    { who: "author", of: "personalCause", can: "read" },
+                    { who: "recipient", of: "personalCause", can: "read" },
+                    { who: "anyone", can: "write" },
+                ],
+              },
             donate: {
               $actions: [ 
-                  {who: "recipient", of: "directCause", can: "write"},
                   { who: "author", of: "donate", can: "read" },
                   { who: "recipient", of: "donate", can: "read" },
+                  { who: "anyone", can: "write" },
               ],
           },
         },
@@ -321,41 +312,39 @@ const Dashboard = () => {
   
 
 
-    // const (e) => setTarget(e.target.value) = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    //     const { name, value } = e.target;
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
             
-    //       if ( name === 'target' || name === 'amount') {
-    //         // Use a regular expression to allow only phone numbers starting with a plus
-    //         const phoneRegex = /^[+]?[0-9\b]+$/;
+          if ( name === 'target') {
+            // Use a regular expression to allow only phone numbers starting with a plus
+            const numberRegex = /^[0-9\b]+$/;
               
-    //         if (!value.match(phoneRegex) && value !== '') {
-    //           // If the input value doesn't match the regex and it's not an empty string, do not update the state
-    //           return;
-    //         }
-    //       } else if (name === 'name' || name === 'title' || name === 'description') {
-    //         // Use a regular expression to allow only letters and spaces
-    //         const letterRegex = /^[A-Za-z\s]+$/;
-    //         if (!value.match(letterRegex) && value !== '') {
-    //           // If the input value doesn't match the regex and it's not an empty string, do not update the state
-    //           return;
-    //         }
-    //       }
+            if (!value.match(numberRegex) && value !== '') {
+              // If the input value doesn't match the regex and it's not an empty string, do not update the state
+              return;
+            }
+          } else if (name === 'name' || name === 'title' || name === 'description') {
+            // Use a regular expression to allow only letters and spaces
+            const letterRegex = /^[A-Za-z\s]+$/;
+            if (!value.match(letterRegex) && value !== '') {
+              // If the input value doesn't match the regex and it's not an empty string, do not update the state
+              return;
+            }
+          }
 
-    //     if (name === 'title') {
-    //         setTitle(value);
-    //     } else if (name === 'name') {
-    //         setName(value);
-    //     } else if (name === 'target') {
-    //         setTarget(value);
-    //     } else if (name === 'deadline') {
-    //         setDeadline(value);
-    //     } else if (name === 'description') {
-    //         setDescription(value);
-    //     } else if (name === 'amount') {
-    //       setAmount(value);
-    //     }
+        if (name === 'title') {
+            setTitle(value);
+        } else if (name === 'name') {
+            setName(value);
+        } else if (name === 'target') {
+            setTarget(value);
+        } else if (name === 'deadline') {
+            setDeadline(value);
+        } else if (name === 'description') {
+            setDescription(value);
+        }
       
-    //   };
+      };
 
     // Create a mixed record and 
   const writeSecretCauseToDwn = async (campaignData) => {
@@ -375,6 +364,11 @@ const Dashboard = () => {
     if (status.code === 200) {
       return { ...campaignData, recordId: record.id };
     }
+    //  const conId = record.id;
+
+    // if (imageData) {
+    //   writeImageToDwn(imageData);
+    // }
 
     toast.success('Personal Campaign Data written to DWN', {
       position: toast.POSITION.TOP_RIGHT,
@@ -390,6 +384,46 @@ const Dashboard = () => {
 };
 
 
+// const writeImageToDwn = async (imageDataFile) => {
+//   const imageblob = new Blob([imageDataFile], { type: 'image/jpeg' });
+
+//   try {
+//   const fundraiseProtocol = fundraiseProtocolDefinition();
+//   const { record, status } = await web5.dwn.records.create({
+//     data: imageblob,
+//     message: {
+//         protocol: fundraiseProtocol.protocol,
+//         schema: fundraiseProtocol.types.image.schema,
+//         dataFormat: 'image/jpeg',
+//         protocolPath: "image",
+//         // parentId: contextId,
+//         // contextId: contextId,
+//         published: true,
+//     },
+//   });
+//   // const { status: imagestatus } = await record.send(myDid);
+//   // console.log(imagestatus);
+//   console.log("imagerecord:", {record, status})
+//   if (status.code === 200) {
+//     return { ...imageblob, recordId: record.id };
+//   }
+
+//   toast.success('Image Data written to DWN', {
+//     position: toast.POSITION.TOP_RIGHT,
+//     autoClose: 3000, 
+//   });
+//     return record;
+// } catch (error) {
+//   console.log(error)
+
+//   toast.error('Error writing image data to DWN', {
+//     position: toast.POSITION.TOP_RIGHT,
+//     autoClose: 3000, 
+//   });
+// }
+
+// };
+
 const writeDirectCauseToDwn = async (campaignData) => {
 
   try {
@@ -401,12 +435,19 @@ const writeDirectCauseToDwn = async (campaignData) => {
         protocolPath: "directCause",
         schema: publicFundraiseProtocol.types.directCause.schema,
         recipient: campaignData.recipientDid,
+        published: true,
     },
   });
 
   if (status.code === 200) {
     return { ...campaignData, recordId: record.id };
   }
+
+  // const conId = record.id;
+
+    // if (imageData) {
+    //   writeImageToDwn(imageData);
+    // }
 
   toast.success('Direct Campaign Data written to DWN', {
     position: toast.POSITION.TOP_RIGHT,
@@ -419,38 +460,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
     autoClose: 3000, 
   });
 }
-
-// try {
-//   const fundraiseProtocol = fundraiseProtocolDefinition();
-//   const { record, status } = await web5.dwn.records.write({
-//     data: campaignData,
-//     message: {
-//         protocol: fundraiseProtocol.protocol,
-//         protocolPath: "directCause",
-//         schema: fundraiseProtocol.types.directCause.schema,
-//         recipient: campaignData.recipientDid,
-//     },
-//   });
-
-//   if (status.code === 200) {
-//     return { ...campaignData, recordId: record.id };
-//   }
-
-//   console.log("Direct Campaign Data written to DWN", { record, status });
-//   toast.success('Direct Campaign Data written to DWN', {
-//     position: toast.POSITION.TOP_RIGHT,
-//     autoClose: 3000, 
-//   });
-//     return record;
-// } catch (error) {
-//   console.error('Error writing direct campaign data to DWN', error);
-//   toast.error('Error writing direct campaign data to DWN', {
-//     position: toast.POSITION.TOP_RIGHT,
-//     autoClose: 3000, 
-//   });
-  
-// }
-
 };
       
   const handleCreateCause = async (e) => {
@@ -482,19 +491,26 @@ const writeDirectCauseToDwn = async (campaignData) => {
       const targetDid = campaignType === 'Public' ? recipientDid : myDid;
       let campaignData;
       let record;
+      // let imageRecord;
 
       if (campaignType === 'Public') {
         console.log('Sending direct mesage...');
+        console.log(recipientDid);
         campaignData = constructPublicCampaign(recipientDid);
         record = await writeDirectCauseToDwn(campaignData);
+        // imageRecord = await writeImageToDwn(imageData);
       } else {
         campaignData = constructPersonalCampaign();
         record = await writeSecretCauseToDwn(campaignData);
+        // imageRecord = await writeImageToDwn(imageData);
       }
 
       if (record) {
+        console.log(targetDid);
         const { status } = await record.send(targetDid);
+        // const { status: imageStatus } = await imageRecord.send(targetDid);
         console.log("Send record status in handleCreateCause", status);
+        // console.log("Send image record status in handleCreateCause", imageStatus);
         await fetchCampaigns();
       } else {
         toast.error('Failed to create record', {
@@ -509,8 +525,8 @@ const writeDirectCauseToDwn = async (campaignData) => {
       setTarget("");
       setDeadline("");
       setDescription("");
-      // setImageBlob(null);
       setRecipientDid("");
+      // imageData = "";
 
       setCreatePopupOpen(false);
       
@@ -530,6 +546,45 @@ const writeDirectCauseToDwn = async (campaignData) => {
         setLoading(false);
       }
   };
+
+  const shareCampaign = async (recordId) => {
+    setShareLoading(true);
+    try {
+      const response = await web5.dwn.records.query({
+        message: {
+          filter: {
+            recordId: recordId,
+          },
+        },
+      });
+  
+      if (response.records && response.records.length > 0) {
+        const record = response.records[0];
+        const { status } = await record.send(recipientDid);
+        console.log("Send record status in shareCampaign", status);
+        toast.success('Campaign shared successfully.', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+        setShareLoading(false);
+        setSharePopupOpen(false);
+      } else {
+        console.error('No record found with the specified ID');
+        toast.error('No record found with the specified ID', {
+          position: toast.POSITION.TOP_RIGHT,
+          autoClose: 3000, 
+        });
+      }
+      setShareLoading(false);
+    } catch (error) {
+      console.error('Error in shareCampaign:', error);
+      toast.error('Error in shareCampaign:', {
+        position: toast.POSITION.TOP_RIGHT,
+        autoClose: 3000, 
+      });
+      setShareLoading(false);
+    }
+  };
   
   const constructPublicCampaign = (recipientDid) => {
       const currentDate = new Date().toLocaleDateString();
@@ -544,7 +599,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
         type: 'Public', 
         description: description,
         deadline: deadline,
-        // image: imageBlob,
         recipientDid: recipientDid,
         amountRaised: amountRaised
       };
@@ -563,41 +617,81 @@ const writeDirectCauseToDwn = async (campaignData) => {
       target: target,
       description: description,
       deadline: deadline,
-      // image: imageBlob,
     };
   };
 
   const fetchPersonalCampaigns = async () => {
     try {
-    const response  = await web5.dwn.records.query({
-      from: myDid,
-      message: {
-        filter: {
-          protocol: "https://shege.xyz",
-          schema: "https://shege.xyz/personalCauseSchema",
-        },
-      },
-    });
+        const response  = await web5.dwn.records.query({
+          from: myDid,
+          message: {
+            filter: {
+              protocol: "https://shege.xyz",
+              schema: "https://shege.xyz/personalCauseSchema",
+            },
+          },
+        });
+        console.log('personal response', response);
 
-    
-    if (response.status.code === 200) {
-      const personalCampaigns =  await Promise.all(
-        response.records.map(async (record) => {
-          const data = await record.data.json();
-          return {
-            ...data, 
-            recordId: record.id 
-          };
-        })
-    );
-      return personalCampaigns;
-    } else {
-      console.error('Error fetching personal campaigns:', response.status);
-    }
+        // Get images from DWN
+
+        // const imagerecords = await web5.dwn.records.query({
+        //   from: myDid,
+        //   message: {
+        //     filter: {
+        //       protocol: "https://shege.xyz",
+        //       protocolPath: "image",
+        //     },
+        //   },
+        // });
+        // console.log('imagerecords', imagerecords);
+        
+        // const campaignIds = [];
+
+        if (response.status.code === 200) {
+          const personalCampaigns =  await Promise.all(
+            response.records.map(async (record) => {
+              const data = await record.data.json();
+              return {
+                ...data, 
+                recordId: record.id 
+              };
+            })
+        );
+
+        // imagerecords.records.forEach(async (imageRec) => {
+        //   console.log('this is the each image record', imageRec);
+        //   // Get the blob of the image data
+        //   const imageId = imageRec.id
+        //   console.log(imageId)
+        //    const {record, status }= await web5.dwn.records.read({
+        //     from: myDid,
+        //     message: {
+        //        filter: {
+        //         recordId: imageId,
+        //        },
+        //     },
+        //     });
+        //   console.log ({record, status})
+        //   const imageresult = await record.data.blob();
+        //   console.log(imageresult)
+        //   const imageid = await record.contextId;  
+        //   console.log(imageid)         
+        //   const imageUrl = URL.createObjectURL(imageresult);
+        //   console.log(imageUrl)
+        //   setImageURLs(prevImageURLs => [...prevImageURLs, imageUrl]);
+        // })
+
+          return personalCampaigns;
+        } else {
+          console.error('Error fetching personal campaigns:', response.status);
+          return [];
+        }
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
   }
 };
+
 
 const fetchPublicCampaigns = async () => {
   try {
@@ -609,7 +703,8 @@ const fetchPublicCampaigns = async () => {
       },
     },
   });
-  if (response?.status?.code === 200) {
+
+  if (response.status.code === 200) {
     const publicCampaigns = await Promise.all(
       response.records.map(async (record) => {
         const data = await record.data.json();
@@ -619,11 +714,12 @@ const fetchPublicCampaigns = async () => {
         };
       })
     );
+
     
     return publicCampaigns;
   } else {
     console.error('Error fetching public campaigns:', response.status);
-    
+    return [];
   } 
   } catch (error) {
     console.error('Error in fetchPublicCampaigns:', error);
@@ -631,8 +727,7 @@ const fetchPublicCampaigns = async () => {
 };
 
 const fetchCampaigns = async () => {
-  setFetchLoading(true);
-  console.log('Fetching campaigns...');
+  setGetCampaignsLoading(true);
   try {
     const personalCampaigns = await fetchPersonalCampaigns();
     const publicCampaigns = await fetchPublicCampaigns();
@@ -642,16 +737,16 @@ const fetchCampaigns = async () => {
       position: toast.POSITION.TOP_RIGHT,
       autoClose: 3000, 
     });
-    setFetchLoading(false);
+    setGetCampaignsLoading(false);
   } catch (error) {
     console.error('Error in fetchCampaigns:', error);
     toast.error('Error fetching campaigns:', {
       position: toast.POSITION.TOP_RIGHT,
       autoClose: 3000, 
     });
-    setFetchLoading(false);
+    setGetCampaignsLoading(false);
   }
-}
+};
 
 const handleCopyDid = async () => {
   if (myDid) {
@@ -683,7 +778,6 @@ const deleteCampaign = async (recordId) => {
       const deleteResult = await record.delete();
 
       if (deleteResult.status.code === 202) {
-        console.log('Campaign deleted successfully');
         toast.success('Campaign deleted successfully', {
           position: toast.POSITION.TOP_RIGHT,
           autoClose: 3000, 
@@ -712,10 +806,9 @@ const deleteCampaign = async (recordId) => {
   }
 };
     
-// deleteCampaign("bafyreifwy2paiazibhaxcax25k5vu773kkxzdbvd6p5aqmvqhr2mb6ytau");
-// deleteCampaign("bafyreibljz4ifabybssxsqfqk7c6t4tiazmhm546kdapnqo2qxsaytcv3i");
 
 const updateCampaign = async (recordId, data) => {
+    setUpdateLoading(true);
   try {
     const response = await web5.dwn.records.query({
       message: {
@@ -735,12 +828,14 @@ const updateCampaign = async (recordId, data) => {
           autoClose: 3000, 
         });
         setCampaigns(prevCampaigns => prevCampaigns.map(message => message.recordId === recordId ? { ...message, ...data } : message));
+        setUpdateLoading(false);
       } else {
         console.error('Error updating message:', updateResult.status);
         toast.error('Error updating campaign', {
           position: toast.POSITION.TOP_RIGHT,
           autoClose: 3000, 
         });
+        setGetCampaignsLoading(false);
       }
     } else {
       console.error('No record found with the specified ID');
@@ -755,11 +850,12 @@ const updateCampaign = async (recordId, data) => {
       position: toast.POSITION.TOP_RIGHT,
       autoClose: 3000, 
     });
+    setGetCampaignsLoading(false);
   }
 };
 
 
-const writeDonationToDwn = async (name: string, amount: string, recipientDid: string) => {
+const writeDonationToDwn = async (name, amount, recipientDid, campaign) => {
 
   const currentDate = new Date().toLocaleDateString();
   const currentTime = new Date().toLocaleTimeString();
@@ -767,6 +863,7 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
   const donationData = {
     name: name,
     amount: amount,
+    campaign: campaign,
     timestamp: `${currentDate} ${currentTime}`,
     sender: myDid, 
     recipientDid: recipientDid,
@@ -781,8 +878,10 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
         protocolPath: "donate",
         schema: fundraiseProtocol.types.donate.schema,
         recipient: donationData.recipientDid,
+        published: true,
     },
   });
+  console.log("donation written", record, status);
 
   if (status.code === 200) {
     return { ...donationData, recordId: record.id };
@@ -804,50 +903,53 @@ const writeDonationToDwn = async (name: string, amount: string, recipientDid: st
 const handleDonation = async (e: FormEvent) => {
   e.preventDefault();
   setLoading(true); 
-  console.log('Making a donation...');
 
   // Validate the form fields
-  const requiredFields = ['name', 'amount'];
-  const emptyFields = requiredFields.filter((field) => ![field]);
+  // const requiredFields = ['name', 'amount'];
+  // const emptyFields = requiredFields.filter((field) => ![field]);
 
-    if (emptyFields.length > 0) {
-        toast.error('Please fill in all required fields.', {
-        position: toast.POSITION.TOP_RIGHT,
-        autoClose: 3000, 
-        });
+  //   if (emptyFields.length > 0) {
+  //       toast.error('Please fill in all required fields.', {
+  //       position: toast.POSITION.TOP_RIGHT,
+  //       autoClose: 3000, 
+  //       });
         
-        requiredFields.forEach((field) => {
-        if (![field]) {
-            // Find the corresponding input element and add the error class
-            const inputElement = document.querySelector(`[name="${field}"]`);
-            if (inputElement) {
-            inputElement.parentElement?.classList.add('error-outline');
-            }
-        }
-        });
+  //       requiredFields.forEach((field) => {
+  //       if (![field]) {
+  //           // Find the corresponding input element and add the error class
+  //           const inputElement = document.querySelector(`[name="${field}"]`);
+  //           if (inputElement) {
+  //           inputElement.parentElement?.classList.add('error-outline');
+  //           }
+  //       }
+  //       });
 
-        return; // Prevent form submission
-    }
+  //       return; // Prevent form submission
+  //   }
 
 
     try {
       let record;
-      record = await writeDonationToDwn(name, amount, recipientDid);
+      record = await writeDonationToDwn(name, amount, recipientDid, campaign);
 
       if (record) {
         const { status } = await record.send(recipientDid);
+        console.log(recipientDid);
         console.log("Send record status in handleDonation", status);
         toast.success('Donation record sent', {
           position: toast.POSITION.TOP_RIGHT,
           autoClose: 3000, 
         });
         fetchDonations();
+        setLoading(false);
       } else {
         throw new Error('Failed to create record');
       }
     
       setName("");
       setAmount("");
+      setRecipientDid("");
+      setCampaign("");
       setLoading(false);
 
       setDonatePopupOpen(false);
@@ -855,7 +957,7 @@ const handleDonation = async (e: FormEvent) => {
       }
       catch (error) {
         console.error('Error in handleDonation', error);
-        toast.error(`Error in handleDonation, ${error}`, {
+        toast.error(`Error! Fillin the required fields`, {
           position: toast.POSITION.TOP_RIGHT,
           autoClose: 3000, 
           });
@@ -865,6 +967,7 @@ const handleDonation = async (e: FormEvent) => {
 
 
   const fetchDonations = async () => {
+    setGetDonationsLoading(true);
     try {
     const response = await web5.dwn.records.query({
       message: {
@@ -890,7 +993,7 @@ const handleDonation = async (e: FormEvent) => {
         position: toast.POSITION.TOP_RIGHT,
         autoClose: 3000, 
       });
-      setDonationLoading(false);
+      setGetDonationsLoading(false);
       return donations;
     } else {
       console.error('Error fetching donations:', response.status);
@@ -898,7 +1001,7 @@ const handleDonation = async (e: FormEvent) => {
         position: toast.POSITION.TOP_RIGHT,
         autoClose: 3000, 
       });
-      setDonationLoading(false);
+      setGetDonationsLoading(false);
       return [];
     }
   } catch (error) {
@@ -956,7 +1059,7 @@ const deleteDonation = async (recordId) => {
                   Your DID
                 </h2>
                 <p className="mb-3 text-base font-medium text-body-color">
-                  Your Decentralized Identifier is your unique digital identity on the Shege Fund network.
+                  Your Decentralized Identifier is your unique digital identity on the Shege Fund platform.
                 </p>
                 <div className="relative">
                   <input
@@ -979,7 +1082,7 @@ const deleteDonation = async (recordId) => {
               <button
                 ref={trigger}
                 onClick={() => setCreatePopupOpen(!createPopupOpen)}
-                className="wow fadeInUp mb-12 text-2xl rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]">
+                className="wow fadeInUp mb-12 text-2xl dark:hover:bg-primary/[20%] rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]">
                 Create Cause
               </button>
               {createPopupOpen && (
@@ -1040,7 +1143,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                         name="title"
                                         value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
+                                        onChange={handleInputChange}
                                         placeholder="5 shegs/week for 1 year"
                                         required
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1061,7 +1164,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                         name="name"
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={handleInputChange}
                                         required
                                         placeholder="Festus Idowu"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1082,7 +1185,7 @@ const deleteDonation = async (recordId) => {
                                         type="text"
                                           name="target"
                                           value={target}
-                                          onChange={(e) => setTarget(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="100 USD"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1103,7 +1206,7 @@ const deleteDonation = async (recordId) => {
                                         type="date"
                                           name="deadline"
                                           value={deadline}
-                                          onChange={(e) => setDeadline(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="31-01-2024"
                                         className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1124,7 +1227,7 @@ const deleteDonation = async (recordId) => {
                                         name="description"
                                         rows={4}
                                           value={description}
-                                          onChange={(e) => setDescription(e.target.value)}
+                                          onChange={handleInputChange}
                                           required
                                         placeholder="Describe your shege story"
                                         className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1145,7 +1248,7 @@ const deleteDonation = async (recordId) => {
                                           type="file"
                                           accept="image/*"
                                           name="image"
-                                          onChange={handleImageInputChange}
+                                          // onChange={handleImageInputChange}
                                           required
                                           className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                         />
@@ -1174,7 +1277,7 @@ const deleteDonation = async (recordId) => {
                                             className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                             type="text"
                                             value={recipientDid}
-                                            onChange={e => setRecipientDid(e.target.value)}
+                                            onChange={(e) => setRecipientDid(e.target.value)}
                                             placeholder="Enter recipient's DID"
                                           />
                                           )}
@@ -1218,15 +1321,15 @@ const deleteDonation = async (recordId) => {
                     </p>
                   </div>
                 
-                  <div className="mr-2 ">
+                  <div className="relative mr-2 ">
                     <button 
                       type="button"
                       onClick={toggleFilterDropdown}
-                      className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                      className="rounded-lg  bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
                         Filter                     
                     </button>    
                       {filterDropdownVisible && (
-                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary border rounded-b-sm shadow-lg dark:bg-boxdark">
+                          <div className="absolute z-10 flex flex-row top-12 left-0 bg-primary w-full rounded-b-lg shadow-lg dark:bg-boxdark">
                             <ul className="py-2">
                               <li
                                 onClick={() => handleFilter('Personal')}
@@ -1279,8 +1382,8 @@ const deleteDonation = async (recordId) => {
                         >
                           <div className="flex items-center p-3">
                             <div className="flex flex-wrap w-full">
-                            {/* <div className="text-xs text-gray-500 dark:text-gray-400">
-                              <ImageComponent blob={async () => await campaign.imageBlob} />                              
+                            {/* <div className="w-full mb-5 text-xs text-gray-500 dark:text-gray-400">
+                              <Image src={imageURLs[index]} alt="campaign image" width={100} height={100} />                           
                             </div>  */}
                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Name</span>
@@ -1348,7 +1451,8 @@ const deleteDonation = async (recordId) => {
                           </div>
                           <div className="flex flex-row w-80 justify-evenly">
                             {campaign.sender === myDid && campaign.type === "Personal" && (
-                              <div className="flex p-3 w-20 justify-center rounded-xl bg-success mb-5">
+                             <div className="flex w-full flex-row justify-evenly">
+                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-success">
                                 <button
                                   onClick={() => togglePopup(campaign.recordId)}
                                   className="text-md  font-medium"
@@ -1407,7 +1511,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                               name="title"
                                               value={title}
-                                              onChange={(e) => setTitle(e.target.value)}
+                                              onChange={handleInputChange}
                                               placeholder="5 shegs/week for 1 year"
                                               required
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1428,7 +1532,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                               name="name"
                                               value={name}
-                                              onChange={(e) => setName(e.target.value)}
+                                              onChange={handleInputChange}
                                               required
                                               placeholder="Festus Idowu"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1449,7 +1553,7 @@ const deleteDonation = async (recordId) => {
                                               type="text"
                                                 name="target"
                                                 value={target}
-                                                onChange={(e) => setTarget(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="100 USD"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1470,7 +1574,7 @@ const deleteDonation = async (recordId) => {
                                               type="date"
                                                 name="deadline"
                                                 value={deadline}
-                                                onChange={(e) => setDeadline(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="31-01-2024"
                                               className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1491,7 +1595,7 @@ const deleteDonation = async (recordId) => {
                                               name="description"
                                               rows={4}
                                                 value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
+                                                onChange={handleInputChange}
                                                 required
                                               placeholder="Describe your shege story"
                                               className="w-full resize-none rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
@@ -1512,7 +1616,7 @@ const deleteDonation = async (recordId) => {
                                                 type="file"
                                                 accept="image/*"
                                                 name="image"
-                                                onChange={handleImageInputChange}
+                                                // onChange={handleImageInputChange}
                                                 required
                                                 className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                               />
@@ -1522,7 +1626,7 @@ const deleteDonation = async (recordId) => {
                                         <div className="w-full px-4 md:w-1/2">
                                           <div className="mb-8">
                                             <label
-                                              htmlFor="image"
+                                              htmlFor="campaignType"
                                               className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                             >
                                               Campaign Type
@@ -1533,15 +1637,15 @@ const deleteDonation = async (recordId) => {
                                                 value={campaignType}
                                                 onChange={(e) => setCampaignType(e.target.value)}
                                               >
-                                                <option value="personal">Personal</option>
-                                                <option value="public">Public</option>
+                                                <option value="Personal">Personal</option>
+                                                <option value="Public">Public</option>
                                               </select>
-                                                {campaignType === 'public' && (
+                                                {campaignType === 'Public' && (
                                                 <input
                                                   className="w-full mt-5 rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                   type="text"
                                                   value={recipientDid}
-                                                  onChange={e => setRecipientDid(e.target.value)}
+                                                  onChange={(e) => setRecipientDid(e.target.value)}
                                                   placeholder="Enter recipient's DID"
                                                 />
                                                 )}
@@ -1552,9 +1656,9 @@ const deleteDonation = async (recordId) => {
                                           <button 
                                             type="button"
                                             onClick={() => updateCampaign(campaign.recordId, title)}
-                                            disabled={loading}
+                                            disabled={updateLoading}
                                             className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                                            {loading ? (
+                                            {updateLoading ? (
                                               <div className="flex items-center">
                                                 <div className="spinner"></div>
                                                 <span className="pl-1">Updating...</span>
@@ -1570,10 +1674,137 @@ const deleteDonation = async (recordId) => {
                                       </div>
                                   </div>
                                 )}
+                               </div> 
+                                <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
+                                <button
+                                  onClick={() => showDeleteConfirmation(campaign.recordId)}
+                                  className="text-md font-medium"
+                                  >
+                                  Delete
+                                </button>
+                                {isDeleteConfirmationVisible && (
+                                  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                                    <div className="p-5 rounded-lg bg-primary/[70%] dark:bg-dark shadow-md">
+                                      <p>Are you sure you want to delete this campaign?</p>
+                                      <div className="mt-4 flex justify-end">
+                                        <button
+                                          onClick={hideDeleteConfirmation}
+                                          className="mr-4 rounded bg-primary py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            hideDeleteConfirmation();
+                                            deleteCampaign(campaign.recordId);
+                                          }}
+                                          className="rounded bg-danger py-2 px-3 text-white hover:bg-opacity-90"
+                                        >
+                                          Confirm
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                               </div>
                             )}
 
-                            {campaign.sender === myDid && (
+                            {campaign.sender === myDid && campaign.type === "Public" && (
+                              <div className="flex w-full flex-row justify-evenly">
+                              <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-success">
+                                <button
+                                ref={trigger}
+                                onClick={() => setSharePopupOpen(!sharePopupOpen)}
+                                  className="text-md  font-medium"
+                                  >
+                                  Share
+                                </button>
+                                {sharePopupOpen && (
+                                  <div
+                                    ref={popup}
+                                    className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+                                  >
+                                    <div
+                                        className="lg:mt-15 lg:w-1/2 rounded-lg bg-primary/[100%] dark:bg-dark pt-3 px-4 shadow-md"
+                                        style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'scroll' }}
+                                      >      
+                                      <div
+                                        className="wow fadeInUp mb-12 rounded-lg bg-primary/[10%] py-11 px-8 dark:bg-dark sm:p-[55px] lg:mb-5 lg:px-8 xl:p-[55px]"
+                                        data-wow-delay=".15s
+                                        ">        
+                                          <div className="flex flex-row justify-between ">
+                                            <h2 className="text-xl font-semibold mb-4">Share Campaign</h2>
+                                            <div className="flex justify-end">
+                                              <button
+                                                onClick={() => setSharePopupOpen(false)}
+                                                className="text-blue-500 hover:text-gray-700 focus:outline-none"
+                                              >
+                                                <svg
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  className="h-5 w-5 fill-current bg-primary rounded-full p-1 hover:bg-opacity-90"
+                                                  fill="none"
+                                                  viewBox="0 0 24 24"
+                                                  stroke="white"
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth="2"
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                  />
+                                                </svg>
+                                              </button>
+                                            </div>  
+                                          </div>
+                                        <form>
+                                      <div className="-mx-4 flex flex-wrap">
+                                        <div className="w-full px-4">
+                                          <div className="mb-8">
+                                            <label
+                                              htmlFor="recipientDid"
+                                              className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                            >
+                                              Recipient DID
+                                            </label>
+                                            <div>
+                                            <input
+                                              type="text"
+                                              name="recipientDid"
+                                              value={recipientDid}
+                                              onChange={(e) => setRecipientDid(e.target.value)}
+                                              placeholder="Paste Recipient DID"
+                                              required
+                                              className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                            />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                       
+                                        <div className="w-full px-4">
+                                          <button 
+                                            type="button"
+                                            onClick={() => shareCampaign(campaign.recordId)}
+                                            disabled={shareLoading}
+                                            className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
+                                            {shareLoading ? (
+                                              <div className="flex items-center">
+                                                <div className="spinner"></div>
+                                                <span className="pl-1">Sharing...</span>
+                                              </div>
+                                            ) : (
+                                              <>Share</>
+                                            )}
+                                          </button>
+                                        </div>
+                                      </div>
+                                        </form>
+                                        </div>
+                                      </div>
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex mb-5 p-3 w-20 justify-center rounded-xl bg-danger">
                                 <button
                                   onClick={() => showDeleteConfirmation(campaign.recordId)}
@@ -1605,6 +1836,7 @@ const deleteDonation = async (recordId) => {
                                     </div>
                                   </div>
                                 )}
+                              </div>
                               </div>
                             )} 
                             
@@ -1658,10 +1890,10 @@ const deleteDonation = async (recordId) => {
 
                                         <form>
                                         <div className="-mx-4 flex flex-wrap">
-                                        <div className="w-full px-4 ">
+                                        <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="name"
+                                                htmlFor="recipientDid"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Recipient DID
@@ -1670,9 +1902,28 @@ const deleteDonation = async (recordId) => {
                                               <input
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
-                                                    value={campaign.sender}
-                                                    readOnly
-                                                    placeholder="Enter recipient's DID"
+                                                    name="recipientDid"
+                                                    value={`"${campaign.sender}"`}
+                                                    onChange={(e) => setRecipientDid(e.target.value)}
+                                                  />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="w-full px-4 md:w-1/2">
+                                            <div className="mb-8">
+                                              <label
+                                                htmlFor="title"
+                                                className="mb-3 block text-sm font-medium text-dark dark:text-white"
+                                              >
+                                                Campaign Title
+                                              </label>
+                                              <div>
+                                              <input
+                                                    className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                                    type="text"
+                                                    name="title"
+                                                    value={campaign.title}
+                                                    onChange={(e) => setCampaign(e.target.value)}
                                                   />
                                               </div>
                                             </div>
@@ -1701,7 +1952,7 @@ const deleteDonation = async (recordId) => {
                                           <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="title"
+                                                htmlFor="amount"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Amount (USD)
@@ -1723,9 +1974,9 @@ const deleteDonation = async (recordId) => {
                                             <button 
                                               type="button"
                                               onClick={handleDonation}
-                                              disabled={loading}
+                                              disabled={donationLoading}
                                               className="rounded-md bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                                              {loading ? (
+                                              {donationLoading ? (
                                                 <div className="flex items-center">
                                                   <div className="spinner"></div>
                                                   <span className="pl-1">Donating...</span>
@@ -1773,9 +2024,9 @@ const deleteDonation = async (recordId) => {
                         <button 
                           type="button"
                           onClick={fetchDonations}                        
-                          disabled={donationLoading}
+                          disabled={getDonationsLoading}
                           className="rounded-lg bg-primary py-4 px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                          {donationLoading ? (
+                          {getDonationsLoading ? (
                             <div className="flex items-center">
                               <div className="spinner"></div>
                               <span className="pl-1">Fetching...</span>
@@ -1797,18 +2048,12 @@ const deleteDonation = async (recordId) => {
                         >
                           <div className="flex items-center p-3"> 
                             <div className="flex flex-wrap w-full">
-                            <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Name</span>
+                            <div className="w-full mb-5 text-gray-500 dark:text-gray-400">
                                 <h4 className="text-sm mt-1  text-black dark:text-white">
-                                  {donation.name}
+                                  {donation.name} committed {donation.amount} USD to {donation.campaign} Campaign.
                                 </h4>
                               </div>
-                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
-                                <span className="text-md">Amount (USD)</span>
-                                <h4 className="text-sm mt-1  text-black dark:text-white">
-                                  {donation.amount}
-                                </h4>
-                              </div>
+                              
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Sender</span>
                                 <h4 className="text-sm mt-1  text-black dark:text-white">

@@ -6,14 +6,14 @@ const featuresData: Feature[] = [
     image: "/images/create.png",
     title: "Create Funding Cause",
     paragraph:
-      "Connect your wallet to create a cause and share your contract information with the public to make donations",
+      "Connect or Generate your DID to create a cause and share your campaign details with people to make donations",
   },
   {
     id: 1,
     image: "/images/donate.png",
     title: "Donate to a Cause",
     paragraph:
-      "Donate to causes that you are interested in. Paste the event information to make your donation.",
+      "Donate to causes that are shared with you and you are interested in.",
   },
   {
     id: 1,

@@ -196,7 +196,7 @@ const handleGenerate = async () => {
                                       type="text"
                                       value={existingDid}
                                       onChange={e => setExistingDid(e.target.value)}
-                                      placeholder="Enter your DID"
+                                      placeholder="Paste your DID"
                                     />
                                 </div>
                               </div>
@@ -213,9 +213,9 @@ const handleGenerate = async () => {
                                 <input
                                       className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                       type="text"
-                                      value={existingDid}
+                                      value={identityAgent}
                                       onChange={e => setIdentityAgent(e.target.value)}
-                                      placeholder="Enter your DID"
+                                      placeholder="Paste your Identity Agent"
                                     />
                                 </div>
                               </div>
