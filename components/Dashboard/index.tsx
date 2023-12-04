@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [updateLoading, setUpdateLoading] = useState<boolean>(false);
   const [donationLoading, setDonationLoading] = useState(false)
     const [recipientDid, setRecipientDid] = useState('');
+    const [donationRecipient, setDonationRecipient] = useState("");
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
@@ -903,7 +904,7 @@ const writeDonationToDwn = async (name, amount, recipientDid, campaignTitle) => 
 const handleDonation = async (e: FormEvent) => {
   e.preventDefault();
   setLoading(true); 
-
+  setDonationLoading(true)
   // Validate the form fields
   // const requiredFields = ['name', 'amount'];
   // const emptyFields = requiredFields.filter((field) => ![field]);
@@ -930,7 +931,7 @@ const handleDonation = async (e: FormEvent) => {
 
     try {
       let record;
-      record = await writeDonationToDwn(name, amount, recipientDid, campaignTitle);
+      record = await writeDonationToDwn(name, amount, donationRecipient, campaignTitle);
 
       if (record) {
         const { status } = await record.send(recipientDid);
@@ -941,16 +942,16 @@ const handleDonation = async (e: FormEvent) => {
           autoClose: 3000, 
         });
         fetchDonations();
-        setLoading(false);
+        setDonationLoading(false);
       } else {
         throw new Error('Failed to create record');
       }
     
       setName("");
       setAmount("");
-      setRecipientDid("");
+      setDonationRecipient("");
       setCampaignTitle("");
-      setLoading(false);
+      setDonationLoading(false);
 
       setDonatePopupOpen(false);
 
@@ -1438,7 +1439,7 @@ const deleteDonation = async (recordId) => {
                               </div>
                               ) : null
                             }
-                              <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
+                              <div className="w-full mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Sender</span>
                                 <h4 className="text-sm mt-1 text-black dark:text-white">
                                 <input
@@ -1913,7 +1914,7 @@ const deleteDonation = async (recordId) => {
                                         <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="recipientDid"
+                                                htmlFor="donationRecipient"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Recipient DID
@@ -1922,9 +1923,9 @@ const deleteDonation = async (recordId) => {
                                               <input
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
-                                                    name="recipientDid"
-                                                    value={recipientDid}
-                                                    onChange={(e) => setRecipientDid(e.target.value)}
+                                                    name="donationRecipient"
+                                                    value={donationRecipient}
+                                                    onChange={(e) => setDonationRecipient(e.target.value)}
                                                     placeholder="Paste the Did"
                                                   />
                                               </div>
@@ -1933,7 +1934,7 @@ const deleteDonation = async (recordId) => {
                                           <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="campaign"
+                                                htmlFor="campaignTitle"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Campaign Title
@@ -1942,7 +1943,7 @@ const deleteDonation = async (recordId) => {
                                               <input
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
-                                                    name="campaign"
+                                                    name="campaignTitle"
                                                     value={campaignTitle}
                                                     onChange={(e) => setCampaignTitle(e.target.value)}
                                                     placeholder="Campaign Title"
