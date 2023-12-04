@@ -22,7 +22,6 @@ const Dashboard = () => {
   const [updateLoading, setUpdateLoading] = useState<boolean>(false);
   const [donationLoading, setDonationLoading] = useState(false)
     const [recipientDid, setRecipientDid] = useState('');
-    const [donationRecipient, setDonationRecipient] = useState('');
     const [didCopied, setDidCopied] = useState(false);
     const [campaignType, setCampaignType] = useState("Personal");
     const [campaigns, setCampaigns] = useState([]);
@@ -426,8 +425,7 @@ const Dashboard = () => {
 // };
 
 const writeDirectCauseToDwn = async (campaignData) => {
-  setCampaign(campaignData.title);
-  setDonationRecipient(campaignData.sender);
+
   try {
   const publicFundraiseProtocol = fundraiseProtocolDefinition();
   const { record, status } = await web5.dwn.records.write({
@@ -468,7 +466,6 @@ const writeDirectCauseToDwn = async (campaignData) => {
     e.preventDefault();
     setLoading(true); 
 
-    
   // const requiredFields = ['title', 'name', 'target', 'deadline', 'description'];
   // const emptyFields = requiredFields.filter((field) => ![field]);
 
@@ -1906,8 +1903,8 @@ const deleteDonation = async (recordId) => {
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
                                                     name="recipientDid"
-                                                    value={donationRecipient}
-                                                    onChange={(e) => setDonationRecipient(e.target.value)}
+                                                    value={campaign.sender}
+                                                    // onChange={(e) => setRecipientDid(e.target.value)}
                                                   />
                                               </div>
                                             </div>
@@ -1915,7 +1912,7 @@ const deleteDonation = async (recordId) => {
                                           <div className="w-full px-4 md:w-1/2">
                                             <div className="mb-8">
                                               <label
-                                                htmlFor="title"
+                                                htmlFor="campaign"
                                                 className="mb-3 block text-sm font-medium text-dark dark:text-white"
                                               >
                                                 Campaign Title
@@ -1924,9 +1921,9 @@ const deleteDonation = async (recordId) => {
                                               <input
                                                     className="w-full rounded-md border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
                                                     type="text"
-                                                    name="title"
-                                                    value={campaign}
-                                                    onChange={(e) => setCampaign(e.target.value)}
+                                                    name="campaign"
+                                                    value={campaign.title}
+                                                    // onChange={(e) => setCampaign(e.target.value)}
                                                   />
                                               </div>
                                             </div>
