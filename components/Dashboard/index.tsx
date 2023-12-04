@@ -1365,8 +1365,16 @@ const deleteDonation = async (recordId) => {
                     <button 
                       type="button"
                       onClick={fetchCampaigns}
+                      disabled={getCampaignsLoading}
                       className="rounded-lg bg-primary py-4 px-4 lg:px-9 text-base font-medium text-white transition duration-300 ease-in-out hover:bg-opacity-80 hover:shadow-signUp">
-                        Refresh                     
+                        {getCampaignsLoading ? (
+                          <div className="flex items-center">
+                            <div className="spinner"></div>
+                            <span className="pl-1">Fetching...</span>
+                          </div>
+                        ) : (
+                          <>Refresh</>
+                        )}                     
                     </button>                 
                   </div>
                 </div>
@@ -1433,7 +1441,19 @@ const deleteDonation = async (recordId) => {
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
                                 <span className="text-md">Sender</span>
                                 <h4 className="text-sm mt-1 text-black dark:text-white">
-                                  {shortenDID(campaign.sender, 15)}
+                                <input
+                                    type="text"
+                                    value={campaign.sender}
+                                    readOnly
+                                    className="w-full rounded-lg border border-transparent py-3 px-6 text-base text-body-color placeholder-body-color shadow-one outline-none focus:border-primary focus-visible:shadow-none dark:bg-[#242B51] dark:shadow-signUp"
+                                  />
+                                  <button
+                                    onClick={handleCopyDid}
+                                    className="absolute right-0 top-0 h-full px-2 py-2 bg-primary rounded-lg dark:bg-white dark:text-black"
+                                  >
+                                    {didCopied ? "Copied" : "Copy"}
+                                  </button>
+                                  {/* {shortenDID(campaign.sender, 15)} */}
                                 </h4>
                               </div>
                               <div className="w-1/2 mb-5 text-gray-500 dark:text-gray-400">
