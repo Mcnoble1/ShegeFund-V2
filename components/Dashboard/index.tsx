@@ -934,8 +934,8 @@ const handleDonation = async (e: FormEvent) => {
       record = await writeDonationToDwn(name, amount, donationRecipient, campaignTitle);
 
       if (record) {
-        const { status } = await record.send(recipientDid);
-        console.log(recipientDid);
+        const { status } = await record.send(donationRecipient);
+        console.log(donationRecipient);
         console.log("Send record status in handleDonation", status);
         toast.success('Donation record sent', {
           position: toast.POSITION.TOP_RIGHT,
